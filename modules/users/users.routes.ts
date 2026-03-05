@@ -5,7 +5,7 @@ import { UserMemoryRepository } from "./users.memory-repository";
 
 const router = Router();
 
-// Composition root for users module
+// Composición raíz para el módulo de usuarios
 const repo = new UserMemoryRepository();
 const svc = new UsersService(repo);
 const controller = new UsersController(svc);

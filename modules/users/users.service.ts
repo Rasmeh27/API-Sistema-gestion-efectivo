@@ -20,19 +20,19 @@ export class UsersService {
 	constructor(private readonly repo: UserRepository) {}
 
 	async createUser(dto: CreateUserDto): Promise<UserRecord> {
-		// basic validation
+		// Valiacion básica
 		if (!dto.name || !dto.email) throw new Error("Invalid payload");
 
-		// uniqueness
+		// unicidad de email
 		const existing = await this.repo.findByEmail(dto.email);
-		if (existing) throw new ConflictError("Email already in use");
+		if (existing) throw new ConflictError("Email ya en uso");
 
 		const id = uuidv4();
 		const toCreate = { ...dto, id, status: "ACTIVO" as const };
 		try {
 			return await this.repo.create(toCreate);
 		} catch (err: any) {
-			if (err?.message === "EMAIL_CONFLICT") throw new ConflictError("Email already in use");
+			if (err?.message === "EMAIL_CONFLICT") throw new ConflictError("Email ya en uso");
 			throw err;
 		}
 	}
@@ -46,24 +46,24 @@ export class UsersService {
 
 	async getUser(id: string) {
 		const u = await this.repo.findById(id);
-		if (!u) throw new NotFoundError("User not found");
+		if (!u) throw new NotFoundError("Usuario no encontrado");
 		return u;
 	}
 
 	async updateUser(id: string, patch: UpdateUserDto) {
 		try {
 			const updated = await this.repo.update(id, patch as any);
-			if (!updated) throw new NotFoundError("User not found");
+			if (!updated) throw new NotFoundError("Usuario no encontrado");
 			return updated;
 		} catch (err: any) {
-			if (err?.message === "EMAIL_CONFLICT") throw new ConflictError("Email already in use");
+			if (err?.message === "EMAIL_CONFLICT") throw new ConflictError("Email ya en uso");
 			throw err;
 		}
 	}
 
 	async deactivateUser(id: string) {
 		const u = await this.repo.deactivate(id);
-		if (!u) throw new NotFoundError("User not found");
+		if (!u) throw new NotFoundError("Usuario no encontrado");
 		return u;
 	}
 }

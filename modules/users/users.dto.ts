@@ -1,4 +1,4 @@
-export type UserStatus = "ACTIVE" | "INACTIVE";
+export type UserStatus = "ACTIVO" | "INACTIVO";
 
 export type UserRecord = {
   id: string;

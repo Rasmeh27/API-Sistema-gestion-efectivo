@@ -58,7 +58,7 @@ export class UserMemoryRepository implements UserRepository {
   async deactivate(id: string): Promise<UserRecord | null> {
     const u = this.byId.get(id);
     if (!u) return null;
-    u.status = "INACTIVE";
+    u.status = "INACTIVO";
     this.byId.set(id, u);
     this.byEmail.set(u.email.toLowerCase(), u);
     return u;
