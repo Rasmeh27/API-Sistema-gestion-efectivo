@@ -7,4 +7,5 @@ export interface UserRepository {
   update(id: string, patch: UpdateUserDto): Promise<UserRecord | null>;
   list(offset: number, limit: number, status?: UserStatus, roleIds?: string[]): Promise<{ items: UserRecord[]; total: number }>;
   deactivate(id: string): Promise<UserRecord | null>;
+  updateStatus(id: string, status: UserStatus): Promise<UserRecord | null>;
 }

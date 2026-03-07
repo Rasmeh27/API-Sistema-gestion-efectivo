@@ -1,26 +1,24 @@
+import { CreateUserDto, UpdateUserDto, UserRecord, UserStatus } from "./users.dto";
 import { UserRepository } from "./users.repository";
-import { CreateUserDto, UserRecord } from "./users.dto";
 
 export class UserMemoryRepository implements UserRepository {
   private readonly byId = new Map<string, UserRecord>();
   private readonly byEmail = new Map<string, UserRecord>();
 
-  constructor(seed: UserRecord[] = []) {
-    for (const u of seed) {
-      this.byId.set(u.id, u);
-      this.byEmail.set(u.email.toLowerCase(), u);
-    }
-  }
-
-  async create(user: CreateUserDto & { id: string; status: UserRecord["status"] }): Promise<UserRecord> {
-    const emailKey = user.email.toLowerCase();
-    if (this.byEmail.has(emailKey)) {
+  async create(user: CreateUserDto & { id: string; status: UserStatus }): Promise<UserRecord> {
+    if (this.byEmail.has(user.email)) {
       throw new Error("EMAIL_CONFLICT");
     }
-    const rec: UserRecord = { id: user.id, name: user.name, email: user.email, status: user.status, roleIds: user.roleIds ?? [] };
-    this.byId.set(rec.id, rec);
-    this.byEmail.set(emailKey, rec);
-    return rec;
+    const record: UserRecord = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      status: user.status,
+      roleIds: user.roleIds ?? [],
+    };
+    this.byId.set(record.id, record);
+    this.byEmail.set(record.email, record);
+    return record;
   }
 
   async findById(id: string): Promise<UserRecord | null> {
@@ -28,45 +26,55 @@ export class UserMemoryRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<UserRecord | null> {
-    return this.byEmail.get(email.toLowerCase()) ?? null;
+    return this.byEmail.get(email) ?? null;
   }
 
-  async update(id: string, patch: Partial<UserRecord>): Promise<UserRecord | null> {
+  async update(id: string, patch: UpdateUserDto): Promise<UserRecord | null> {
+    
     const existing = this.byId.get(id);
     if (!existing) return null;
-    if (patch.email && patch.email.toLowerCase() !== existing.email.toLowerCase()) {
-      const conflict = this.byEmail.get(patch.email.toLowerCase());
-      if (conflict && conflict.id !== id) {
+
+    if (patch.email && patch.email !== existing.email) {
+      if (this.byEmail.has(patch.email)) {
         throw new Error("EMAIL_CONFLICT");
       }
-      this.byEmail.delete(existing.email.toLowerCase());
+      this.byEmail.delete(existing.email);
       existing.email = patch.email;
-      this.byEmail.set(existing.email.toLowerCase(), existing);
+      this.byEmail.set(existing.email, existing);
     }
-    if (patch.name !== undefined) existing.name = patch.name;
-    if (patch.roleIds !== undefined) existing.roleIds = patch.roleIds;
+
+    if (patch.name) existing.name = patch.name;
+    if (patch.roleIds) existing.roleIds = patch.roleIds;
+    if (patch.status) existing.status = patch.status;
+
     this.byId.set(id, existing);
     return existing;
   }
 
-  async list(offset: number, limit: number, status?: string, roleIds?: string[]): Promise<{ items: UserRecord[]; total: number }> {
-    let items = Array.from(this.byId.values()).sort((a, b) => a.id.localeCompare(b.id));
-    if (status) {
-      items = items.filter(u => u.status === status);
-    }
+  async updateStatus(id: string, status: UserStatus): Promise<UserRecord | null> {
+    const existing = this.byId.get(id);
+    if (!existing) return null;
+    existing.status = status;
+    this.byId.set(id, existing);
+    return existing;
+  }
+
+  async list(offset: number, limit: number, status?: UserStatus, roleIds?: string[]): Promise<{ items: UserRecord[]; total: number }> {
+    let items = Array.from(this.byId.values());
+    if (status) items = items.filter(u => u.status === status);
     if (roleIds && roleIds.length > 0) {
-      items = items.filter(u => roleIds.some(role => u.roleIds.includes(role)));
+      items = items.filter(u => roleIds.every(r => u.roleIds.includes(r)));
     }
-    const slice = items.slice(offset, offset + limit);
-    return { items: slice, total: items.length };
+    const total = items.length;
+    const paged = items.slice(offset, offset + limit);
+    return { items: paged, total };
   }
 
   async deactivate(id: string): Promise<UserRecord | null> {
-    const u = this.byId.get(id);
-    if (!u) return null;
-    u.status = "INACTIVO";
-    this.byId.set(id, u);
-    this.byEmail.set(u.email.toLowerCase(), u);
-    return u;
+    const existing = this.byId.get(id);
+    if (!existing) return null;
+    existing.status = "INACTIVO";
+    this.byId.set(id, existing);
+    return existing;
   }
 }

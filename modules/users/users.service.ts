@@ -60,7 +60,15 @@ export class UsersService {
 			throw err;
 		}
 	}
-
+    async updateUserStatus(id: string, status: "ACTIVO" | "INACTIVO") {
+    try {
+        const updated = await this.repo.updateStatus(id, status);
+        if (!updated) throw new NotFoundError("Usuario no encontrado");
+        return updated;
+    } catch (err: any) {
+        throw err;
+    }
+}
 	async deactivateUser(id: string) {
 		const u = await this.repo.deactivate(id);
 		if (!u) throw new NotFoundError("Usuario no encontrado");

@@ -67,7 +67,21 @@ export class UsersController {
             next(err);
         }
     };
-
+updateStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { status } = req.body;
+        const updated = await this.svc.updateUserStatus(req.params.id as string, status);
+        res.status(200).json(updated);
+    } catch (err: any) {
+        if (err instanceof UserError) {
+            return res.status(err.status).json({ error: { code: err.Code, message: err.message } });
+        }
+        if (err instanceof Error) {
+            return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: err.message } });
+        }
+        next(err);
+    }
+};
     deactivate = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const u = await this.svc.deactivateUser(req.params.id as string);

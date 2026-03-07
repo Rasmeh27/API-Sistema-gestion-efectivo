@@ -18,7 +18,12 @@ export type UpdateUserDto = Partial<{
   name: string;
   email: string;
   roleIds: string[];
+  status: UserStatus;
 }>;
+
+export type UpdateUserStatusDto = {
+  status: UserStatus;
+};
 
 // helpers para validar/parsear peticiones HTTP
 export function parseCreateUser(body: unknown): CreateUserDto {
@@ -68,3 +73,13 @@ export function parseUpdateUser(body: unknown): UpdateUserDto {
     return patch;
 }
 
+export function parseUpdateUserStatus(body: unknown): UpdateUserStatusDto {
+    if (!body || typeof body !== "object") {
+        throw new Error("Cuerpo debe ser un objeto.");
+    }
+    const status = (body as any).status;
+    if (status !== "ACTIVO" && status !== "INACTIVO") {
+        throw new Error("status debe ser 'ACTIVO' o 'INACTIVO'");
+    }
+    return { status };
+}
