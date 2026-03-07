@@ -37,11 +37,11 @@ export class UsersService {
 		}
 	}
 
-	async listUsers(page = 1, perPage = 20) {
+	async listUsers(page = 1, perPage = 20, status?: "ACTIVO" | "INACTIVO") {
 		const p = Math.max(1, page);
 		const l = Math.max(1, perPage);
 		const offset = (p - 1) * l;
-		return this.repo.list(offset, l);
+		return this.repo.list(offset, l, status);
 	}
 
 	async getUser(id: string) {

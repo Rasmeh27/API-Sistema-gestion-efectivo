@@ -49,8 +49,11 @@ export class UserMemoryRepository implements UserRepository {
     return existing;
   }
 
-  async list(offset: number, limit: number): Promise<{ items: UserRecord[]; total: number }> {
-    const items = Array.from(this.byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+  async list(offset: number, limit: number, status?: string): Promise<{ items: UserRecord[]; total: number }> {
+    let items = Array.from(this.byId.values()).sort((a, b) => a.id.localeCompare(b.id));
+    if (status) {
+      items = items.filter(u => u.status === status);
+    }
     const slice = items.slice(offset, offset + limit);
     return { items: slice, total: items.length };
   }
