@@ -32,7 +32,8 @@ export class UsersController {
             const perPage = Number(req.query.perPage ?? 20);
             const statusStr = req.query.status as string | undefined;
             const status = statusStr && ["ACTIVO", "INACTIVO"].includes(statusStr) ? (statusStr as "ACTIVO" | "INACTIVO") : undefined;
-            const result = await this.svc.listUsers(page, perPage, status);
+            const roleIds = req.query.roleIds ? (Array.isArray(req.query.roleIds) ? req.query.roleIds as string[] : [req.query.roleIds as string]) : undefined;
+            const result = await this.svc.listUsers(page, perPage, status, roleIds);
             res.status(200).json(result);
         } catch (err) {
             next(err);

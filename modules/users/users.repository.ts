@@ -5,6 +5,6 @@ export interface UserRepository {
   findById(id: string): Promise<UserRecord | null>;
   findByEmail(email: string): Promise<UserRecord | null>;
   update(id: string, patch: UpdateUserDto): Promise<UserRecord | null>;
-  list(offset: number, limit: number, status?: UserStatus): Promise<{ items: UserRecord[]; total: number }>;
+  list(offset: number, limit: number, status?: UserStatus, roleIds?: string[]): Promise<{ items: UserRecord[]; total: number }>;
   deactivate(id: string): Promise<UserRecord | null>;
 }
