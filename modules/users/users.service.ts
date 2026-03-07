@@ -37,11 +37,11 @@ export class UsersService {
 		}
 	}
 
-	async listUsers(page = 1, perPage = 20) {
+	async listUsers(page = 1, perPage = 20, status?: string, roleIds?: string[]) {
 		const p = Math.max(1, page);
 		const l = Math.max(1, perPage);
 		const offset = (p - 1) * l;
-		return this.repo.list(offset, l);
+		return this.repo.list(offset, l, status as any, roleIds);
 	}
 
 	async getUser(id: string) {
@@ -60,7 +60,15 @@ export class UsersService {
 			throw err;
 		}
 	}
-
+    async updateUserStatus(id: string, status: "ACTIVO" | "INACTIVO") {
+    try {
+        const updated = await this.repo.updateStatus(id, status);
+        if (!updated) throw new NotFoundError("Usuario no encontrado");
+        return updated;
+    } catch (err: any) {
+        throw err;
+    }
+}
 	async deactivateUser(id: string) {
 		const u = await this.repo.deactivate(id);
 		if (!u) throw new NotFoundError("Usuario no encontrado");

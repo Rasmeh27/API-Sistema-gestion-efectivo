@@ -14,6 +14,7 @@ router.post("/", controller.create);
 router.get("/", controller.list);
 router.get("/:id", controller.get);
 router.patch("/:id", controller.update);
+router.patch("/:id/status", controller.updateStatus); // <-- aquí agregamos el endpoint
 router.patch("/:id/deactivate", controller.deactivate);
 
 export default router;
