@@ -1,20 +1,15 @@
-import express from "express";
-
+import { Router } from "express";
 import authRoutes from "../../modules/auth/auth.routes";
+import rolesRoutes from "../../modules/roles/role.routes";
+import sucursalesRoutes from "../../modules/sucursales/sucursales.routes";
 import usersRoutes from "../../modules/users/users.routes";
+import { requireAuth } from "../middlewares/auth.middleware";
 
-const router = express.Router();
-
-// TODO: Import and use your module routes
-// import auditRoutes from "../../modules/audit/audit.routes";
-// import authRoutes from "../../modules/auth/auth.routes";
-// import branchesRoutes from "../../modules/branches/branches.routes";
-
-// router.use("/audit", auditRoutes);
-// router.use("/auth", authRoutes);
-// router.use("/branches", branchesRoutes);
+const router = Router();
 
 router.use("/auth", authRoutes);
-router.use("/users", usersRoutes);
+router.use("/roles", requireAuth, rolesRoutes);
+router.use("/sucursales", requireAuth, sucursalesRoutes);
+router.use("/users", requireAuth, usersRoutes);
 
 export default router;

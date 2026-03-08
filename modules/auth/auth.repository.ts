@@ -1,11 +1,14 @@
+export type AuthUserStatus = "ACTIVO" | "BLOQUEADO";
+
 export type AuthUserRecord = {
-    id: string;
-    email: string;
-    passwordHash: string;
-    roleId: string[];
-    status: "ACTIVO" | "INACTIVO";
+  id: string;
+  email: string;
+  passwordHash: string;
+  roles: string[];
+  permissions: string[];
+  status: AuthUserStatus;
 };
 
 export interface AuthUserRepository {
-    findByEmail(email: string): Promise<AuthUserRecord | null>;
+  findByEmail(email: string): Promise<AuthUserRecord | null>;
 }
