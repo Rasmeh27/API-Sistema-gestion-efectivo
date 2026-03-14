@@ -19,12 +19,12 @@ export class PgUserRepository implements UserRepository {
   async create(user: CreateUserDto & { status: UserStatus }): Promise<UserRecord> {
     return withTransaction(async (client) => {
       const insertUserSql = `
-        insert into usuario ("username/email", nombre, estado)
+        insert into usuario ("username_email", nombre, estado)
         values ($1, $2, $3)
         returning
           id::text as id,
           nombre as name,
-          "username/email" as email,
+          "username_email" as email,
           estado as status;
       `;
 
@@ -58,17 +58,17 @@ export class PgUserRepository implements UserRepository {
         select
           u.id::text as id,
           u.nombre as name,
-          u."username/email" as email,
+          u."username_email" as email,
           u.estado as status,
           coalesce(
             array_agg(distinct ur.rol_id::text) filter (where ur.rol_id is not null),
             '{}'::text[]
           ) as role_ids
         from usuario u
-        left join usuario_rol ur
+        left join usuariorol ur
           on ur.usuario_id = u.id
-        where lower(u."username/email") = lower($1)
-        group by u.id, u.nombre, u."username/email", u.estado
+        where lower(u."username_email") = lower($1)
+        group by u.id, u.nombre, u."username_email", u.estado
         limit 1;
       `;
 
@@ -97,7 +97,7 @@ export class PgUserRepository implements UserRepository {
       }
 
       if (patch.email !== undefined) {
-        sets.push(`"username/email" = $${index++}`);
+        sets.push(`"username_email" = $${index++}`);
         values.push(patch.email);
       }
 
@@ -146,7 +146,7 @@ export class PgUserRepository implements UserRepository {
         filters.push(`
           exists (
             select 1
-            from usuario_rol ur_filter
+            from usuariorol ur_filter
             where ur_filter.usuario_id = u.id
               and ur_filter.rol_id = any($${index++}::int[])
           )
@@ -160,17 +160,17 @@ export class PgUserRepository implements UserRepository {
         select
           u.id::text as id,
           u.nombre as name,
-          u."username/email" as email,
+          u."username_email" as email,
           u.estado as status,
           coalesce(
             array_agg(distinct ur.rol_id::text) filter (where ur.rol_id is not null),
             '{}'::text[]
           ) as role_ids
         from usuario u
-        left join usuario_rol ur
+        left join usuariorol ur
           on ur.usuario_id = u.id
         ${whereClause}
-        group by u.id, u.nombre, u."username/email", u.estado
+        group by u.id, u.nombre, u."username_email", u.estado
         order by u.id desc
         offset $${index++}
         limit $${index++};
@@ -223,17 +223,17 @@ export class PgUserRepository implements UserRepository {
       select
         u.id::text as id,
         u.nombre as name,
-        u."username/email" as email,
+        u."username_email" as email,
         u.estado as status,
         coalesce(
           array_agg(distinct ur.rol_id::text) filter (where ur.rol_id is not null),
           '{}'::text[]
         ) as role_ids
       from usuario u
-      left join usuario_rol ur
+      left join usuariorol ur
         on ur.usuario_id = u.id
       where u.id = $1
-      group by u.id, u.nombre, u."username/email", u.estado
+      group by u.id, u.nombre, u."username_email", u.estado
       limit 1;
     `;
 
@@ -254,7 +254,7 @@ export class PgUserRepository implements UserRepository {
   }
 
   private async replaceRoles(client: PoolClient, userId: string, roleIds: string[]): Promise<void> {
-    await client.query("delete from usuario_rol where usuario_id = $1", [userId]);
+    await client.query("delete from usuariorol where usuario_id = $1", [userId]);
 
     if (roleIds.length === 0) {
       return;
@@ -271,7 +271,7 @@ export class PgUserRepository implements UserRepository {
       .join(", ");
 
     const sql = `
-      insert into usuario_rol (usuario_id, rol_id)
+      insert into usuariorol (usuario_id, rol_id)
       values ${valuesSql};
     `;
 
