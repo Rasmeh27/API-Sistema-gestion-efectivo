@@ -1,79 +1,93 @@
-import { CreateRoleDto, UpdateRoleDto } from "./roles.dto";
+// modules/roles/roles.service.ts
+
+import { CreateRoleDto, RoleRecord, UpdateRoleDto } from "./roles.dto";
 import { RoleErrors } from "./roles.errors";
-import { RoleRepository } from "./role.repository";
+import { RoleRepository } from "./roles.repository";
 
-export class RolesService { 
-    constructor(private readonly repository: RoleRepository) {}
+export class RolesService {
+  constructor(private readonly roles: RoleRepository) {}
 
-    async createRole(dto: CreateRoleDto) {
-        const existing = await this.repository.findByName(dto.nombre);
+  async create(dto: CreateRoleDto): Promise<RoleRecord> {
+    await this.ensureNameAvailable(dto.nombre);
+    await this.ensurePermissionsExist(dto.permissionsIds);
 
-        if(existing) {
-            throw RoleErrors.nameConflict(dto.nombre);
-        }
+    return this.roles.create(dto);
+  }
 
-        const permissionCount = await this.repository.countPermissionsByIds(dto.permissionsIds);
+  async list(): Promise<RoleRecord[]> {
+    return this.roles.list();
+  }
 
-        if(permissionCount !== dto.permissionsIds.length) {
-            throw RoleErrors.invalidPermissionsIds();
-        }
-        return this.repository.create(dto);
+  async getById(id: string): Promise<RoleRecord> {
+    const role = await this.roles.findById(id);
+
+    if (!role) {
+      throw RoleErrors.notFound(id);
     }
 
-    async listRoles() {
-        return this.repository.list();
+    return role;
+  }
+
+  async update(id: string, dto: UpdateRoleDto): Promise<RoleRecord> {
+    if (dto.nombre) {
+      await this.ensureNameAvailableForUpdate(dto.nombre, id);
     }
 
-    async getRole(id: string) {
-        const role = await this.repository.findById(id);
-
-        if(!role) {
-            throw RoleErrors.notFound(id);
-        }
-        return role;
+    if (dto.permissionsIds) {
+      await this.ensurePermissionsExist(dto.permissionsIds);
     }
 
-    async updateRole(id: string, dto: UpdateRoleDto) {
-        if(dto.nombre) {
-            const existing = await this.repository.findByName(dto.nombre);
+    const updated = await this.roles.update(id, dto);
 
-            if(existing && existing.id !== id) {
-                throw RoleErrors.nameConflict(dto.nombre);
-            }
-        }
-
-        if(dto.permissionsIds) {
-            const permissionCount = await this.repository.countPermissionsByIds(dto.permissionsIds);
-
-            if(permissionCount !== dto.permissionsIds.length) {
-                throw RoleErrors.invalidPermissionsIds();
-            }
-        }
-
-        const updated = await this.repository.update(id, dto);
-
-        if(!updated) {
-            throw RoleErrors.notFound(id);
-        }
-
-        return updated;
+    if (!updated) {
+      throw RoleErrors.notFound(id);
     }
 
-    async deleteRole(id: string) {
-        const inUse = await this.repository.isAssignedToUsers(id);
+    return updated;
+  }
 
-        if(inUse) {
-            throw RoleErrors.roleInUse();
-        }
+  async delete(id: string): Promise<void> {
+    const inUse = await this.roles.isAssignedToUsers(id);
 
-        const deleted = await this.repository.delete(id);
-
-        if(!deleted) {
-            throw RoleErrors.notFound(id);
-        }
-
-        return {
-            success: true
-        };
+    if (inUse) {
+      throw RoleErrors.roleInUse();
     }
+
+    const deleted = await this.roles.delete(id);
+
+    if (!deleted) {
+      throw RoleErrors.notFound(id);
+    }
+  }
+
+  // ── Privados ──────────────────────────────────────────
+
+  private async ensureNameAvailable(name: string): Promise<void> {
+    const existing = await this.roles.findByName(name);
+
+    if (existing) {
+      throw RoleErrors.nameConflict(name);
+    }
+  }
+
+  private async ensureNameAvailableForUpdate(
+    name: string,
+    roleId: string
+  ): Promise<void> {
+    const existing = await this.roles.findByName(name);
+
+    if (existing && existing.id !== roleId) {
+      throw RoleErrors.nameConflict(name);
+    }
+  }
+
+  private async ensurePermissionsExist(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+
+    const count = await this.roles.countPermissionsByIds(ids);
+
+    if (count !== ids.length) {
+      throw RoleErrors.invalidPermissionIds();
+    }
+  }
 }

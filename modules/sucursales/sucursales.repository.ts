@@ -1,4 +1,10 @@
-import { CreateSucursalDto, SucursalRecord, UpdateSucursalDto } from "./sucursales.dto";
+// modules/sucursales/sucursales.repository.ts
+
+import {
+  CreateSucursalDto,
+  SucursalRecord,
+  UpdateSucursalDto,
+} from "./sucursales.dto";
 
 export interface SucursalRepository {
   create(dto: CreateSucursalDto): Promise<SucursalRecord>;

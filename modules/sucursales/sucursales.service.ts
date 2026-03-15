@@ -1,44 +1,42 @@
-import { CreateSucursalDto, UpdateSucursalDto } from "./sucursales.dto";
+// modules/sucursales/sucursales.service.ts
+
+import {
+  CreateSucursalDto,
+  SucursalRecord,
+  UpdateSucursalDto,
+} from "./sucursales.dto";
 import { SucursalErrors } from "./sucursales.errors";
 import { SucursalRepository } from "./sucursales.repository";
 
 export class SucursalesService {
-  constructor(private readonly repo: SucursalRepository) {}
+  constructor(private readonly sucursales: SucursalRepository) {}
 
-  async createSucursal(dto: CreateSucursalDto) {
-    const existing = await this.repo.findByCode(dto.codigo);
+  async create(dto: CreateSucursalDto): Promise<SucursalRecord> {
+    await this.ensureCodeAvailable(dto.codigo);
 
-    if (existing) {
-      throw SucursalErrors.codeConflict(dto.codigo);
-    }
-
-    return this.repo.create(dto);
+    return this.sucursales.create(dto);
   }
 
-  async listSucursales() {
-    return this.repo.list();
+  async list(): Promise<SucursalRecord[]> {
+    return this.sucursales.list();
   }
 
-  async getSucursal(id: string) {
-    const item = await this.repo.findById(id);
+  async getById(id: string): Promise<SucursalRecord> {
+    const sucursal = await this.sucursales.findById(id);
 
-    if (!item) {
+    if (!sucursal) {
       throw SucursalErrors.notFound(id);
     }
 
-    return item;
+    return sucursal;
   }
 
-  async updateSucursal(id: string, dto: UpdateSucursalDto) {
+  async update(id: string, dto: UpdateSucursalDto): Promise<SucursalRecord> {
     if (dto.codigo) {
-      const existing = await this.repo.findByCode(dto.codigo);
-
-      if (existing && existing.id !== id) {
-        throw SucursalErrors.codeConflict(dto.codigo);
-      }
+      await this.ensureCodeAvailableForUpdate(dto.codigo, id);
     }
 
-    const updated = await this.repo.update(id, dto);
+    const updated = await this.sucursales.update(id, dto);
 
     if (!updated) {
       throw SucursalErrors.notFound(id);
@@ -47,13 +45,32 @@ export class SucursalesService {
     return updated;
   }
 
-  async deleteSucursal(id: string) {
-    const deleted = await this.repo.delete(id);
+  async delete(id: string): Promise<void> {
+    const deleted = await this.sucursales.delete(id);
 
     if (!deleted) {
       throw SucursalErrors.notFound(id);
     }
+  }
 
-    return { success: true };
+  // ── Privados ──────────────────────────────────────────
+
+  private async ensureCodeAvailable(codigo: string): Promise<void> {
+    const existing = await this.sucursales.findByCode(codigo);
+
+    if (existing) {
+      throw SucursalErrors.codeConflict(codigo);
+    }
+  }
+
+  private async ensureCodeAvailableForUpdate(
+    codigo: string,
+    sucursalId: string
+  ): Promise<void> {
+    const existing = await this.sucursales.findByCode(codigo);
+
+    if (existing && existing.id !== sucursalId) {
+      throw SucursalErrors.codeConflict(codigo);
+    }
   }
 }

@@ -1,156 +1,120 @@
+// modules/users/users.controller.ts
+
 import { NextFunction, Request, Response } from "express";
-import { parseCreateUser, parseUpdateUser, parseUpdateUserStatus } from "./users.dto";
+import {
+  parseCreateUser,
+  parseListUsersQuery,
+  parseUpdateUser,
+  parseUpdateUserStatus,
+} from "./users.dto";
 import { UserError } from "./users.errors";
 import { UsersService } from "./users.service";
 
 export class UsersController {
-  constructor(private readonly svc: UsersService) {}
+  constructor(private readonly service: UsersService) {}
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dto = parseCreateUser(req.body);
-      const created = await this.svc.createUser(dto);
+      const user = await this.service.create(dto);
 
-      res.status(201).json(created);
-    } catch (err: unknown) {
-      if (err instanceof UserError) {
-        return res.status(err.status).json({
-          error: {
-            code: err.Code,
-            message: err.message,
-          },
-        });
-      }
-
-      if (err instanceof Error) {
-        return res.status(400).json({
-          error: {
-            code: "VALIDATION_ERROR",
-            message: err.message,
-          },
-        });
-      }
-
-      return next(err);
+      return res.status(201).json({ data: user });
+    } catch (error) {
+      return this.handleError(error, res, next);
     }
   };
 
   list = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const page = Number(req.query.page ?? 1);
-      const perPage = Number(req.query.perPage ?? 20);
-      const statusStr = req.query.status as string | undefined;
-      const status =
-        statusStr && ["ACTIVO", "INACTIVO"].includes(statusStr)
-          ? (statusStr as "ACTIVO" | "INACTIVO")
-          : undefined;
-      const roleIds = req.query.roleIds
-        ? Array.isArray(req.query.roleIds)
-          ? (req.query.roleIds as string[])
-          : [req.query.roleIds as string]
-        : undefined;
+      const query = parseListUsersQuery(
+        req.query as Record<string, unknown>
+      );
+      const result = await this.service.list(query);
 
-      const result = await this.svc.listUsers(page, perPage, status, roleIds);
-
-      res.status(200).json(result);
-    } catch (err) {
-      next(err);
+      return res.status(200).json({ data: result });
+    } catch (error) {
+      return this.handleError(error, res, next);
     }
   };
 
-  get = async (req: Request, res: Response, next: NextFunction) => {
+  getById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const user = await this.svc.getUser(req.params.id as string);
+      const user = await this.service.getById(this.getParamId(req));
 
-      res.status(200).json(user);
-    } catch (err: unknown) {
-      if (err instanceof UserError) {
-        return res.status(err.status).json({
-          error: {
-            code: err.Code,
-            message: err.message,
-          },
-        });
-      }
-
-      return next(err);
+      return res.status(200).json({ data: user });
+    } catch (error) {
+      return this.handleError(error, res, next);
     }
   };
 
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const patch = parseUpdateUser(req.body);
-      const updated = await this.svc.updateUser(req.params.id as string, patch);
+      const user = await this.service.update(this.getParamId(req), patch);
 
-      res.status(200).json(updated);
-    } catch (err: unknown) {
-      if (err instanceof UserError) {
-        return res.status(err.status).json({
-          error: {
-            code: err.Code,
-            message: err.message,
-          },
-        });
-      }
-
-      if (err instanceof Error) {
-        return res.status(400).json({
-          error: {
-            code: "VALIDATION_ERROR",
-            message: err.message,
-          },
-        });
-      }
-
-      return next(err);
+      return res.status(200).json({ data: user });
+    } catch (error) {
+      return this.handleError(error, res, next);
     }
   };
 
-  updateStatus = async (req: Request, res: Response, next: NextFunction) => {
+  updateStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const { status } = parseUpdateUserStatus(req.body);
-      const updated = await this.svc.updateUserStatus(req.params.id as string, status);
+      const user = await this.service.updateStatus(
+        this.getParamId(req),
+        status
+      );
 
-      res.status(200).json(updated);
-    } catch (err: unknown) {
-      if (err instanceof UserError) {
-        return res.status(err.status).json({
-          error: {
-            code: err.Code,
-            message: err.message,
-          },
-        });
-      }
-
-      if (err instanceof Error) {
-        return res.status(400).json({
-          error: {
-            code: "VALIDATION_ERROR",
-            message: err.message,
-          },
-        });
-      }
-
-      return next(err);
+      return res.status(200).json({ data: user });
+    } catch (error) {
+      return this.handleError(error, res, next);
     }
   };
 
-  deactivate = async (req: Request, res: Response, next: NextFunction) => {
+  deactivate = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      const user = await this.svc.deactivateUser(req.params.id as string);
+      const user = await this.service.deactivate(this.getParamId(req));
 
-      res.status(200).json(user);
-    } catch (err: unknown) {
-      if (err instanceof UserError) {
-        return res.status(err.status).json({
-          error: {
-            code: err.Code,
-            message: err.message,
-          },
-        });
-      }
-
-      return next(err);
+      return res.status(200).json({ data: user });
+    } catch (error) {
+      return this.handleError(error, res, next);
     }
   };
+
+  // ── Helpers privados ──────────────────────────────────
+
+  private getParamId(req: Request): string {
+    const id = req.params.id;
+    if (Array.isArray(id)) return id[0];
+    return id;
+  }
+
+  private handleError(
+    error: unknown,
+    res: Response,
+    next: NextFunction
+  ) {
+    if (error instanceof UserError) {
+      return res.status(error.status).json({
+        error: { code: error.code, message: error.message },
+      });
+    }
+
+    if (error instanceof Error) {
+      return res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: error.message },
+      });
+    }
+
+    return next(error);
+  }
 }

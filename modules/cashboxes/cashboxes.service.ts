@@ -1,35 +1,76 @@
-import { CashboxesRepository } from "./cashboxes.postgres-repository";
-import { CreateCashboxDto, UpdateCashboxDto } from "./cashboxes.dto";
+// modules/cashboxes/cashboxes.service.ts
+
+import {
+  CashboxRecord,
+  CreateCashboxDto,
+  UpdateCashboxDto,
+} from "./cashboxes.dto";
+import { CashboxErrors } from "./cashboxes.errors";
+import { CashboxRepository } from "./cashboxes.repository";
 
 export class CashboxesService {
+  constructor(private readonly cashboxes: CashboxRepository) {}
 
-  constructor(private readonly repo: CashboxesRepository) {}
+  async create(dto: CreateCashboxDto): Promise<CashboxRecord> {
+    await this.ensureCodeAvailable(dto.codigo);
 
-  async create(dto: CreateCashboxDto) {
-
-    // validación de negocio
-    if (dto.estado === "BLOQUEADA") {
-      throw new Error("No se puede crear una caja en estado BLOQUEADA");
-    }
-
-    return this.repo.create(dto);
+    return this.cashboxes.create(dto);
   }
 
-  async findAll() {
-    return this.repo.findAll();
+  async list(): Promise<CashboxRecord[]> {
+    return this.cashboxes.list();
   }
 
-  async update(id: string, dto: UpdateCashboxDto) {
+  async getById(id: string): Promise<CashboxRecord> {
+    const cashbox = await this.cashboxes.findById(id);
 
-    if (!id || id.trim().length === 0) {
-      throw new Error("El id de la caja es requerido");
+    if (!cashbox) {
+      throw CashboxErrors.notFound(id);
     }
 
-    if (Object.keys(dto).length === 0) {
-      throw new Error("Debe enviar al menos un campo para actualizar");
-    }
-
-    return this.repo.update(id, dto);
+    return cashbox;
   }
 
+  async update(id: string, dto: UpdateCashboxDto): Promise<CashboxRecord> {
+    if (dto.codigo) {
+      await this.ensureCodeAvailableForUpdate(dto.codigo, id);
+    }
+
+    const updated = await this.cashboxes.update(id, dto);
+
+    if (!updated) {
+      throw CashboxErrors.notFound(id);
+    }
+
+    return updated;
+  }
+
+  async delete(id: string): Promise<void> {
+    const deleted = await this.cashboxes.delete(id);
+
+    if (!deleted) {
+      throw CashboxErrors.notFound(id);
+    }
+  }
+
+  // ── Privados ──────────────────────────────────────────
+
+  private async ensureCodeAvailable(codigo: string): Promise<void> {
+    const existing = await this.cashboxes.findByCode(codigo);
+
+    if (existing) {
+      throw CashboxErrors.codeConflict(codigo);
+    }
+  }
+
+  private async ensureCodeAvailableForUpdate(
+    codigo: string,
+    cashboxId: string
+  ): Promise<void> {
+    const existing = await this.cashboxes.findByCode(codigo);
+
+    if (existing && existing.id !== cashboxId) {
+      throw CashboxErrors.codeConflict(codigo);
+    }
+  }
 }

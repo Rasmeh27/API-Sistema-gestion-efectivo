@@ -1,24 +1,69 @@
-export class CashboxError extends Error {
-  public readonly Code: string;
-  public readonly status: number;
+// modules/cashboxes/cashboxes.errors.ts
 
-  constructor(message: string, code: string, status: number) {
+type CashboxErrorCode =
+  | "CASHBOX_NOT_FOUND"
+  | "CASHBOX_CODE_CONFLICT"
+  | "CASHBOX_IN_USE"
+  | "CASHBOX_CREATE_FAILED"
+  | "INVALID_CASHBOX_STATUS"
+  | "CASHBOX_BLOCKED";
+
+const HTTP_STATUS = {
+  BAD_REQUEST: 400,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+} as const;
+
+export class CashboxError extends Error {
+  constructor(
+    public readonly code: CashboxErrorCode,
+    public readonly status: number,
+    message: string
+  ) {
     super(message);
-    this.Code = code;
-    this.status = status;
   }
 }
 
 export const CashboxErrors = {
-  invalidData: () =>
-    new CashboxError("Datos inválidos para la caja", "INVALID_DATA", 400),
+  notFound: (id: string) =>
+    new CashboxError(
+      "CASHBOX_NOT_FOUND",
+      HTTP_STATUS.NOT_FOUND,
+      `Caja no encontrada: ${id}`
+    ),
 
-  notFound: () =>
-    new CashboxError("Caja no encontrada", "CASHBOX_NOT_FOUND", 404),
+  codeConflict: (codigo: string) =>
+    new CashboxError(
+      "CASHBOX_CODE_CONFLICT",
+      HTTP_STATUS.CONFLICT,
+      `Ya existe una caja con código "${codigo}"`
+    ),
 
-  alreadyExists: () =>
-    new CashboxError("La caja ya existe", "CASHBOX_ALREADY_EXISTS", 409),
+  inUse: () =>
+    new CashboxError(
+      "CASHBOX_IN_USE",
+      HTTP_STATUS.BAD_REQUEST,
+      "No se puede eliminar la caja porque tiene sesiones activas"
+    ),
 
-  internal: () =>
-    new CashboxError("Error interno en Cashboxes", "CASHBOX_INTERNAL_ERROR", 500),
+  createFailed: () =>
+    new CashboxError(
+      "CASHBOX_CREATE_FAILED",
+      HTTP_STATUS.BAD_REQUEST,
+      "No se pudo crear la caja"
+    ),
+
+  invalidStatus: () =>
+    new CashboxError(
+      "INVALID_CASHBOX_STATUS",
+      HTTP_STATUS.BAD_REQUEST,
+      "El estado debe ser ACTIVA, INACTIVA o EN_MANTENIMIENTO"
+    ),
+
+  blocked: (id: string) =>
+    new CashboxError(
+      "CASHBOX_BLOCKED",
+      HTTP_STATUS.BAD_REQUEST,
+      `La caja ${id} está bloqueada y no puede operar`
+    ),
 };

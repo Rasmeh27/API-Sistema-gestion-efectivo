@@ -1,3 +1,5 @@
+// modules/sucursales/sucursales.dto.ts
+
 export type SucursalStatus = "ACTIVA" | "INACTIVA";
 
 export type SucursalRecord = {
@@ -19,70 +21,74 @@ export type UpdateSucursalDto = {
   estado?: SucursalStatus;
 };
 
+// ── Parsers ──────────────────────────────────────────────
+
 function requireObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("Payload inválido");
   }
-
   return value as Record<string, unknown>;
 }
 
-function normalizeString(value: unknown, fieldName: string): string {
+function requireNonEmptyString(value: unknown, field: string): string {
   if (typeof value !== "string") {
-    throw new Error(`${fieldName} debe ser un string`);
+    throw new Error(`${field} debe ser un string`);
   }
-
-  const normalized = value.trim();
-
-  if (!normalized) {
-    throw new Error(`${fieldName} es requerido`);
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${field} es requerido`);
   }
-
-  return normalized;
+  return trimmed;
 }
 
-function isSucursalStatus(value: unknown): value is SucursalStatus {
-  return value === "ACTIVA" || value === "INACTIVA";
+function optionalNonEmptyString(
+  value: unknown,
+  field: string
+): string | undefined {
+  if (value === undefined) return undefined;
+  return requireNonEmptyString(value, field);
 }
 
-function normalizeStatus(value: unknown, fieldName: string): SucursalStatus {
-  if (typeof value !== "string") {
-    throw new Error(`${fieldName} debe ser un string`);
+const VALID_STATUSES: SucursalStatus[] = ["ACTIVA", "INACTIVA"];
+
+function parseStatus(value: unknown, field: string): SucursalStatus {
+  const raw = requireNonEmptyString(value, field).toUpperCase();
+
+  if (!VALID_STATUSES.includes(raw as SucursalStatus)) {
+    throw new Error(`${field} debe ser ACTIVA o INACTIVA`);
   }
 
-  const normalized = value.trim().toUpperCase();
-
-  if (!isSucursalStatus(normalized)) {
-    throw new Error(`${fieldName} debe ser ACTIVA o INACTIVA`);
-  }
-
-  return normalized;
+  return raw as SucursalStatus;
 }
 
 export function parseCreateSucursal(input: unknown): CreateSucursalDto {
-  const payload = requireObject(input);
+  const body = requireObject(input);
 
   return {
-    codigo: normalizeString(payload.codigo, "codigo").toUpperCase(),
-    nombre: normalizeString(payload.nombre, "nombre"),
-    estado: payload.estado ? normalizeStatus(payload.estado, "estado") : "ACTIVA",
+    codigo: requireNonEmptyString(body.codigo, "codigo").toUpperCase(),
+    nombre: requireNonEmptyString(body.nombre, "nombre"),
+    estado: body.estado !== undefined
+      ? parseStatus(body.estado, "estado")
+      : undefined,
   };
 }
 
 export function parseUpdateSucursal(input: unknown): UpdateSucursalDto {
-  const payload = requireObject(input);
+  const body = requireObject(input);
   const result: UpdateSucursalDto = {};
 
-  if ("codigo" in payload && payload.codigo !== undefined) {
-    result.codigo = normalizeString(payload.codigo, "codigo").toUpperCase();
+  const codigo = optionalNonEmptyString(body.codigo, "codigo");
+  if (codigo !== undefined) {
+    result.codigo = codigo.toUpperCase();
   }
 
-  if ("nombre" in payload && payload.nombre !== undefined) {
-    result.nombre = normalizeString(payload.nombre, "nombre");
+  const nombre = optionalNonEmptyString(body.nombre, "nombre");
+  if (nombre !== undefined) {
+    result.nombre = nombre;
   }
 
-  if ("estado" in payload && payload.estado !== undefined) {
-    result.estado = normalizeStatus(payload.estado, "estado");
+  if ("estado" in body && body.estado !== undefined) {
+    result.estado = parseStatus(body.estado, "estado");
   }
 
   if (Object.keys(result).length === 0) {

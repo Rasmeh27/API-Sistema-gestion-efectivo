@@ -1,63 +1,97 @@
-import dotenv from 'dotenv';
+// src/config/env.ts
+
+import dotenv from "dotenv";
 
 dotenv.config();
 
-type NodeEnv = 'development' | 'production' | 'test';
+// ── Tipos ───────────────────────────────────────────────
 
+type NodeEnv = "development" | "production" | "test";
+
+// ── Lectores de variables de entorno ────────────────────
 
 function readRequired(name: string): string {
-    const value = process.env[name]?.trim();
+  const value = process.env[name]?.trim();
 
-    if(!value) {
-        throw new Error(`Missing required environment variable: ${name}`);
-    }
+  if (!value) {
+    throw new Error(`Variable de entorno requerida no encontrada: ${name}`);
+  }
 
-    return value;
+  return value;
+}
+
+function readOptional(name: string, fallback: string): string {
+  return process.env[name]?.trim() || fallback;
 }
 
 function readBoolean(name: string, fallback: boolean): boolean {
-    const raw = process.env[name]?.trim().toLowerCase();
+  const raw = process.env[name]?.trim().toLowerCase();
 
-    if(!raw) return fallback;
+  if (!raw) return fallback;
 
-    if(["true","1","yes", "y", "on"].includes(raw)) {
-        return true;
-    }
-    if(["false","0","no", "n", "off"].includes(raw)) {
-        return false;
-    }
+  const truthy = ["true", "1", "yes", "y", "on"];
+  const falsy = ["false", "0", "no", "n", "off"];
 
-    throw new Error(`Invalid boolean value for environment variable ${name}: ${raw}`);
+  if (truthy.includes(raw)) return true;
+  if (falsy.includes(raw)) return false;
+
+  throw new Error(
+    `Valor booleano inválido para ${name}: "${raw}"`
+  );
 }
 
 function readPositiveInt(name: string, fallback: number): number {
-    const raw = process.env[name]?.trim();
+  const raw = process.env[name]?.trim();
 
-    if(!raw) return fallback;
+  if (!raw) return fallback;
 
-    const value = Number(raw);
+  const value = Number(raw);
 
-    if(!Number.isInteger(value) || value <= 0) {
-        throw new Error(`Invalid positive integer value for environment variable ${name}: ${raw}`);
-    }
-    return value;
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(
+      `Entero positivo inválido para ${name}: "${raw}"`
+    );
+  }
+
+  return value;
 }
 
-const nodeEnv = (process.env.NODE_ENV?.trim() ?? "development") as NodeEnv;
-const port = readPositiveInt("PORT", 3000);
+// ── Validación de NodeEnv ───────────────────────────────
+
+function readNodeEnv(): NodeEnv {
+  const raw = process.env.NODE_ENV?.trim() ?? "development";
+  const valid: NodeEnv[] = ["development", "production", "test"];
+
+  if (!valid.includes(raw as NodeEnv)) {
+    throw new Error(
+      `NODE_ENV inválido: "${raw}". Valores permitidos: ${valid.join(", ")}`
+    );
+  }
+
+  return raw as NodeEnv;
+}
+
+// ── Exportación ─────────────────────────────────────────
 
 export const env = {
-  nodeEnv,
-  port,
+  // Server
+  nodeEnv: readNodeEnv(),
+  port: readPositiveInt("PORT", 3000),
+  isProduction: readNodeEnv() === "production",
+  isDevelopment: readNodeEnv() === "development",
+
+  // Database
   databaseUrl: readRequired("DATABASE_URL"),
   dbSsl: readBoolean("DB_SSL", true),
   dbPoolMax: readPositiveInt("DB_POOL_MAX", 10),
   dbIdleTimeoutMs: readPositiveInt("DB_IDLE_TIMEOUT_MS", 10_000),
   dbConnectionTimeoutMs: readPositiveInt("DB_CONNECTION_TIMEOUT_MS", 10_000),
+
+  // JWT / Auth
   jwtSecret: readRequired("JWT_SECRET"),
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN?.trim() || "1h",
+  jwtExpiresIn: readOptional("JWT_EXPIRES_IN", "15m"),
+  jwtRefreshExpiresDays: readPositiveInt("JWT_REFRESH_EXPIRES_DAYS", 7),
+
+  // Feature flags
   allowBootstrap: readBoolean("ALLOW_BOOTSTRAP", false),
 } as const;
-
-
-

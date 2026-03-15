@@ -1,20 +1,35 @@
+// src/app/routes.ts
+
 import { Router } from "express";
+import { requireAuth } from "../middlewares/auth.middleware";
+
 import authRoutes from "../../modules/auth/auth.routes";
-import rolesRoutes from "../../modules/roles/role.routes";
+import rolesRoutes from "../../modules/roles/roles.routes";
 import sucursalesRoutes from "../../modules/sucursales/sucursales.routes";
 import usersRoutes from "../../modules/users/users.routes";
-import { requireAuth } from "../middlewares/auth.middleware";
-import sessionsRoutes from "../../modules/sessions/sessions.routes";
-import transactionsRoutes from "../../modules/transactions/transactions.routes";
-import treasuryRoutes from "../../modules/treasury/treasury.routes";
+import cashboxesRoutes from "../../modules/cashboxes/cashboxes.routes";
+import cashboxSessionRoutes from "../../modules/cashbox-sessions/cashbox-sessions.routes";
+import cashboxAuditRoutes from "../../modules/cashbox-audits/cashbox-audits.routes";
+import cashMovementRoutes from "../../modules/cash-movements/cash-movements.routes";
+import fundRequestRoutes from "../../modules/fund-requests/fund-requests.routes";
+import auditRoutes from "../../modules/audit/audit.routes";
+import kpiRoutes from "../../modules/kpis/kpis.routes";
 
 const router = Router();
 
+// Público
 router.use("/auth", authRoutes);
+
+// Protegidos (requieren autenticación)
 router.use("/roles", requireAuth, rolesRoutes);
 router.use("/sucursales", requireAuth, sucursalesRoutes);
 router.use("/users", requireAuth, usersRoutes);
-router.use("/sessions", requireAuth, sessionsRoutes);
-router.use("/transactions", requireAuth, transactionsRoutes);
-router.use("/treasury", requireAuth, treasuryRoutes);
+router.use("/cashboxes", requireAuth, cashboxesRoutes);
+router.use("/cashbox-sessions", requireAuth, cashboxSessionRoutes);
+router.use("/arqueos", requireAuth, cashboxAuditRoutes);
+router.use("/movimientos", requireAuth, cashMovementRoutes);
+router.use("/solicitudes", requireAuth, fundRequestRoutes);
+router.use("/auditoria", requireAuth, auditRoutes);
+router.use("/kpis", requireAuth, kpiRoutes);
+
 export default router;

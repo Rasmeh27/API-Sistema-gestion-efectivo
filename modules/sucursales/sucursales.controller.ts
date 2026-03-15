@@ -1,5 +1,10 @@
+// modules/sucursales/sucursales.controller.ts
+
 import { NextFunction, Request, Response } from "express";
-import { parseCreateSucursal, parseUpdateSucursal } from "./sucursales.dto";
+import {
+  parseCreateSucursal,
+  parseUpdateSucursal,
+} from "./sucursales.dto";
 import { SucursalError } from "./sucursales.errors";
 import { SucursalesService } from "./sucursales.service";
 
@@ -9,109 +14,76 @@ export class SucursalesController {
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dto = parseCreateSucursal(req.body);
-      const created = await this.service.createSucursal(dto);
+      const sucursal = await this.service.create(dto);
 
-      return res.status(201).json(created);
+      return res.status(201).json({ data: sucursal });
     } catch (error) {
-      if (error instanceof SucursalError) {
-        return res.status(error.status).json({
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        });
-      }
-
-      if (error instanceof Error) {
-        return res.status(400).json({
-          error: {
-            code: "VALIDATION_ERROR",
-            message: error.message,
-          },
-        });
-      }
-
-      return next(error);
+      return this.handleError(error, res, next);
     }
   };
 
   list = async (_req: Request, res: Response, next: NextFunction) => {
     try {
-      const items = await this.service.listSucursales();
+      const items = await this.service.list();
 
-      return res.status(200).json(items);
+      return res.status(200).json({ data: items });
     } catch (error) {
-      return next(error);
+      return this.handleError(error, res, next);
     }
   };
 
-  get = async (req: Request, res: Response, next: NextFunction) => {
+  getById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      const item = await this.service.getSucursal(id);
+      const sucursal = await this.service.getById(this.getParamId(req));
 
-      return res.status(200).json(item);
+      return res.status(200).json({ data: sucursal });
     } catch (error) {
-      if (error instanceof SucursalError) {
-        return res.status(error.status).json({
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        });
-      }
-
-      return next(error);
+      return this.handleError(error, res, next);
     }
   };
 
   update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const dto = parseUpdateSucursal(req.body);
-      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      const updated = await this.service.updateSucursal(id, dto);
+      const sucursal = await this.service.update(this.getParamId(req), dto);
 
-      return res.status(200).json(updated);
+      return res.status(200).json({ data: sucursal });
     } catch (error) {
-      if (error instanceof SucursalError) {
-        return res.status(error.status).json({
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        });
-      }
-
-      if (error instanceof Error) {
-        return res.status(400).json({
-          error: {
-            code: "VALIDATION_ERROR",
-            message: error.message,
-          },
-        });
-      }
-
-      return next(error);
+      return this.handleError(error, res, next);
     }
   };
 
   delete = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-      const result = await this.service.deleteSucursal(id);
+      await this.service.delete(this.getParamId(req));
 
-      return res.status(200).json(result);
+      return res.status(204).send();
     } catch (error) {
-      if (error instanceof SucursalError) {
-        return res.status(error.status).json({
-          error: {
-            code: error.code,
-            message: error.message,
-          },
-        });
-      }
-
-      return next(error);
+      return this.handleError(error, res, next);
     }
   };
+
+  // ── Helpers privados ──────────────────────────────────
+
+  private getParamId(req: Request): string {
+    const id = req.params.id;
+    if (Array.isArray(id)) return id[0];
+    return id;
+  }
+
+  private handleError(error: unknown, res: Response, next: NextFunction) {
+    if (error instanceof SucursalError) {
+      return res.status(error.status).json({
+        error: { code: error.code, message: error.message },
+      });
+    }
+
+    if (error instanceof Error) {
+      return res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: error.message },
+      });
+    }
+
+    return next(error);
+  }
 }

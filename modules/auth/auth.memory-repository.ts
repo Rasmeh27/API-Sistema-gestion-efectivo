@@ -1,13 +1,22 @@
+// modules/auth/auth.memory-repository.ts
+
 import { AuthUserRecord, AuthUserRepository } from "./auth.repository";
 
-export class AuthUserMemoryRepository implements AuthUserRepository {
-    private readonly usersByEmail: Map<string, AuthUserRecord>;
+export class InMemoryAuthUserRepository implements AuthUserRepository {
+  private readonly users: Map<string, AuthUserRecord>;
 
-    constructor(seedUsers: AuthUserRecord[]) {
-        this.usersByEmail = new Map(seedUsers.map(user => [user.email, user]));
-    }
+  constructor(seed: AuthUserRecord[] = []) {
+    this.users = new Map(seed.map((user) => [user.email, user]));
+  }
 
-    async findByEmail(email: string): Promise<AuthUserRecord | null> {
-        return this.usersByEmail.get(email) ?? null;
+  async findByEmail(email: string): Promise<AuthUserRecord | null> {
+    return this.users.get(email.toLowerCase()) ?? null;
+  }
+
+  async findById(id: string): Promise<AuthUserRecord | null> {
+    for (const user of this.users.values()) {
+      if (user.id === id) return user;
     }
+    return null;
+  }
 }

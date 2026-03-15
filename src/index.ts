@@ -1,2 +1,5 @@
-const { startServer } = require("./app/app.ts");
+// src/index.ts
+
+import { startServer } from "./app/app";
+
 startServer();
