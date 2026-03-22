@@ -729,5 +729,3 @@ Acciones registradas automáticamente:
 ```
 
 ---
-
-Ahí lo tienes. Cubre los 12 módulos con todos los endpoints, bodies, query params, permisos y ejemplos reales basados en las pruebas que corriste.
