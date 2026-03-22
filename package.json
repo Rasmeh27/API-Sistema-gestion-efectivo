@@ -20,6 +20,8 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "test:users": "tsx scripts/tests/users-tests.ts"
+    "test:users": "tsx scripts/tests/users-tests.ts",
+    "seed": "tsx db/seeds/seed.ts",
+    "test:flow": "tsx scripts/tests/full-flow-test.ts"
   }
 }

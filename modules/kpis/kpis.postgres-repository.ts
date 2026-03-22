@@ -235,7 +235,7 @@ export class PgKpiRepository implements KpiRepository {
         ea.accion,
         ea.resumen,
         ea.fecha,
-        u.name as usuario
+        u.nombre as usuario
       from eventoauditoria ea
       left join usuario u on u.id = ea.usuario_id
       order by ea.fecha desc
