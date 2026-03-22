@@ -24,6 +24,12 @@ router.post(
 );
 
 router.get(
+  "/dashboard",
+  requirePermission(Resources.KPI, Actions.VER),
+  controller.dashboard
+);
+
+router.get(
   "/",
   requirePermission(Resources.KPI, Actions.VER),
   controller.list

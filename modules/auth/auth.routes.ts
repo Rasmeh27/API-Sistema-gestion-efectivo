@@ -7,6 +7,8 @@ import { PgAuthUserRepository } from "./auth.postgres-repository";
 import { PgAuthSessionRepository } from "./auth.session-postgres-repository";
 import { BcryptPasswordService } from "./auth.password-service";
 import { JwtTokenService } from "./auth.token-service";
+import { PgAuditRepository } from "../audit/audit.postgres-repository";
+import { AuditLogger } from "../audit/audit.logger";
 import { requireAuth } from "../../src/middlewares/auth.middleware";
 import { env } from "../../src/config/env";
 
@@ -15,6 +17,7 @@ import { env } from "../../src/config/env";
 const userRepository = new PgAuthUserRepository();
 const sessionRepository = new PgAuthSessionRepository();
 const passwordService = new BcryptPasswordService();
+const auditLogger = new AuditLogger(new PgAuditRepository());
 
 const tokenService = new JwtTokenService({
   secret: env.jwtSecret,
@@ -26,7 +29,8 @@ const authService = new AuthService(
   userRepository,
   passwordService,
   tokenService,
-  sessionRepository
+  sessionRepository,
+  auditLogger
 );
 
 const controller = new AuthController(authService);

@@ -67,6 +67,60 @@ export function parseCreateKpiSnapshot(body: unknown): CreateKpiSnapshotDto {
   };
 }
 
+// ── Dashboard en tiempo real ─────────────────────────────
+
+export interface DashboardQuery {
+  sucursalId?: string;
+}
+
+export interface CashSummary {
+  efectivoTotalEnCirculacion: number;
+  cajasAbiertas: number;
+  cajasCerradas: number;
+}
+
+export interface TransactionVolume {
+  tipo: string;
+  cantidad: number;
+  total: number;
+}
+
+export interface BalanceAlert {
+  arqueoId: string;
+  cajaId: string;
+  diferencia: number;
+  fecha: string;
+}
+
+export interface RecentOperation {
+  accion: string;
+  resumen: string | null;
+  fecha: string;
+  usuario: string | null;
+}
+
+export interface DashboardResponse {
+  cashSummary: CashSummary;
+  transactionVolume24h: TransactionVolume[];
+  transactionVolume7d: TransactionVolume[];
+  transactionVolume30d: TransactionVolume[];
+  balanceAlerts: BalanceAlert[];
+  recentOperations: RecentOperation[];
+}
+
+export function parseDashboardQuery(query: unknown): DashboardQuery {
+  if (!query || typeof query !== "object") return {};
+
+  const q = query as Record<string, unknown>;
+
+  return {
+    sucursalId:
+      typeof q.sucursalId === "string" && q.sucursalId.trim().length > 0
+        ? q.sucursalId.trim()
+        : undefined,
+  };
+}
+
 export function parseListKpiSnapshotsQuery(query: unknown): ListKpiSnapshotsQuery {
   if (!query || typeof query !== "object") return {};
 

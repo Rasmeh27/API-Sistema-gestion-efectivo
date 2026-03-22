@@ -2,9 +2,9 @@
 
 // ── Tipos ────────────────────────────────────────────────
 
-export type RequestStatus = "PENDIENTE" | "APROBADA" | "RECHAZADA";
+export type RequestStatus = "PENDIENTE" | "APROBADA" | "RECHAZADA" | "EJECUTADA";
 
-const VALID_STATUSES: RequestStatus[] = ["PENDIENTE", "APROBADA", "RECHAZADA"];
+const VALID_STATUSES: RequestStatus[] = ["PENDIENTE", "APROBADA", "RECHAZADA", "EJECUTADA"];
 
 export type Decision = "APROBADA" | "RECHAZADA";
 
@@ -21,6 +21,7 @@ export interface FundRequestRecord {
   destinoScope: string;
   destinoId: string;
   monto: number;
+  moneda: string;
   motivo: string;
   prioridad: Priority;
   estado: RequestStatus;
@@ -40,12 +41,16 @@ export interface ApprovalRecord {
   fecha: string;
 }
 
+const VALID_CURRENCIES = ["DOP", "USD", "EUR"] as const;
+export type Currency = typeof VALID_CURRENCIES[number];
+
 export interface CreateFundRequestDto {
   origenScope: string;
   origenId: string;
   destinoScope: string;
   destinoId: string;
   monto: number;
+  moneda?: Currency;
   motivo: string;
   prioridad?: Priority;
 }
@@ -97,6 +102,7 @@ export function parseCreateFundRequest(body: unknown): CreateFundRequestDto {
   const b = body as Record<string, unknown>;
 
   const prioridad = optionalString(b.prioridad)?.toUpperCase();
+  const monedaRaw = optionalString(b.moneda)?.toUpperCase();
 
   return {
     origenScope: requireNonEmptyString(b.origenScope, "origenScope"),
@@ -104,6 +110,9 @@ export function parseCreateFundRequest(body: unknown): CreateFundRequestDto {
     destinoScope: requireNonEmptyString(b.destinoScope, "destinoScope"),
     destinoId: requireNonEmptyString(b.destinoId, "destinoId"),
     monto: requirePositiveNumber(b.monto, "monto"),
+    moneda: monedaRaw && (VALID_CURRENCIES as readonly string[]).includes(monedaRaw)
+      ? (monedaRaw as Currency)
+      : "DOP",
     motivo: requireNonEmptyString(b.motivo, "motivo"),
     prioridad: prioridad && VALID_PRIORITIES.includes(prioridad as Priority)
       ? (prioridad as Priority)

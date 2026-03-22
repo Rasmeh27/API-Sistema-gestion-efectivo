@@ -2,7 +2,6 @@
 
 import { AuthUserRepository } from "./auth.repository";
 import { PasswordService } from "./auth.password-service";
-import { TokenService } from "./auth.token-service";
 import { JwtTokenService } from "./auth.token-service";
 import { AuthSessionRepository } from "./auth.session-repository";
 import { AuthErrors } from "./auth.errors";
@@ -12,6 +11,7 @@ import {
   RefreshRequestDto,
   RefreshResponseDto,
 } from "./auth.dto";
+import { AuditLogger } from "../audit/audit.logger";
 
 // ── Request metadata ────────────────────────────────────
 
@@ -27,7 +27,8 @@ export class AuthService {
     private readonly users: AuthUserRepository,
     private readonly passwords: PasswordService,
     private readonly tokens: JwtTokenService,
-    private readonly sessions: AuthSessionRepository
+    private readonly sessions: AuthSessionRepository,
+    private readonly audit: AuditLogger
   ) {}
 
   // ── Login ───────────────────────────────────────────
@@ -40,7 +41,20 @@ export class AuthService {
 
     await this.verifyPassword(dto.password, user.passwordHash);
 
-    return this.createSessionTokens(user.id, user.email, user.roles, user.permissions, meta);
+    const result = await this.createSessionTokens(
+      user.id, user.email, user.roles, user.permissions, meta
+    );
+
+    await this.audit.log({
+      usuarioId: user.id,
+      accion: "LOGIN",
+      entidadTipo: "SESION",
+      entidadId: user.id,
+      resumen: `Inicio de sesión desde ${meta.ip ?? "IP desconocida"}`,
+      metadata: JSON.stringify({ ip: meta.ip, userAgent: meta.userAgent }),
+    });
+
+    return result;
   }
 
   // ── Refresh ─────────────────────────────────────────
@@ -64,7 +78,7 @@ export class AuthService {
       throw AuthErrors.sessionExpired();
     }
 
-    await this.sessions.revoke(session.id, meta.ip); 
+    await this.sessions.revoke(session.id, meta.ip);
 
     const userById = await this.findActiveUserById(session.usuarioId);
 
@@ -79,20 +93,42 @@ export class AuthService {
 
   // ── Logout ──────────────────────────────────────────
 
-  async logout(refreshToken: string, meta: RequestMeta): Promise<void> {
+  async logout(
+    refreshToken: string,
+    meta: RequestMeta,
+    userId?: string
+  ): Promise<void> {
     const session = await this.sessions.findByRefreshToken(refreshToken);
 
     if (!session) {
-      return; // Idempotente: no falla si ya no existe
+      return; // Idempotente
     }
 
     await this.sessions.revoke(session.id, meta.ip);
+
+    await this.audit.log({
+      usuarioId: userId ?? session.usuarioId,
+      accion: "LOGOUT",
+      entidadTipo: "SESION",
+      entidadId: session.id,
+      resumen: "Cierre de sesión",
+    });
   }
 
-  // ── Logout global (todas las sesiones) ──────────────
+  // ── Logout global ─────────────────────────────────
 
   async logoutAll(usuarioId: string): Promise<number> {
-    return this.sessions.revokeAllByUsuario(usuarioId);
+    const count = await this.sessions.revokeAllByUsuario(usuarioId);
+
+    await this.audit.log({
+      usuarioId,
+      accion: "LOGOUT_ALL",
+      entidadTipo: "SESION",
+      entidadId: usuarioId,
+      resumen: `Cierre de todas las sesiones (${count} revocadas)`,
+    });
+
+    return count;
   }
 
   // ── Métodos privados ────────────────────────────────
@@ -116,9 +152,7 @@ export class AuthService {
   }
 
   private async findActiveUserById(id: string) {
-    // Se necesita agregar findById al AuthUserRepository
-    // Por ahora delegamos al repositorio existente
-    const user = await (this.users as any).findById?.(id);
+    const user = await this.users.findById(id);
 
     if (!user) {
       throw AuthErrors.invalidCredentials();

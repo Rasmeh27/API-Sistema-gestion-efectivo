@@ -43,6 +43,19 @@ export class CashMovementsController {
     }
   };
 
+  void = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const movement = await this.service.void(
+        this.getParamId(req),
+        req.auth!.sub
+      );
+
+      return res.status(200).json({ data: movement });
+    } catch (error) {
+      return this.handleError(error, res, next);
+    }
+  };
+
   // ── Helpers privados ──────────────────────────────────
 
   private getParamId(req: Request): string {

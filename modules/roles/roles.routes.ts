@@ -4,13 +4,16 @@ import { Router } from "express";
 import { RolesController } from "./roles.controller";
 import { RolesService } from "./roles.service";
 import { PgRoleRepository } from "./roles.postgres-repository";
+import { PgAuditRepository } from "../audit/audit.postgres-repository";
+import { AuditLogger } from "../audit/audit.logger";
 import { requirePermission } from "../../src/middlewares/rbac.middleware";
 import { Resources, Actions } from "../../src/config/rbac";
 
 // ── Dependencias ────────────────────────────────────────
 
 const repository = new PgRoleRepository();
-const service = new RolesService(repository);
+const auditLogger = new AuditLogger(new PgAuditRepository());
+const service = new RolesService(repository, auditLogger);
 const controller = new RolesController(service);
 
 // ── Rutas ───────────────────────────────────────────────

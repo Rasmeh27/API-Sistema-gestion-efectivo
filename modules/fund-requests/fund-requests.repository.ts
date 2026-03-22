@@ -13,6 +13,7 @@ export interface FundRequestRepository {
   findById(id: string): Promise<FundRequestRecord | null>;
   list(filters: ListFundRequestsQuery): Promise<FundRequestRecord[]>;
   resolve(id: string, dto: ResolveRequestDto, aprobadaPor: string): Promise<FundRequestRecord | null>;
+  execute(id: string): Promise<FundRequestRecord | null>;
   createApproval(solicitudId: string, dto: ResolveRequestDto, usuarioId: string): Promise<ApprovalRecord>;
   findApprovalByRequestId(solicitudId: string): Promise<ApprovalRecord | null>;
 }

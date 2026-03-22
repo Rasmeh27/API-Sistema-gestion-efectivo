@@ -5,6 +5,8 @@ import { UsersController } from "./users.controller";
 import { UsersService } from "./users.service";
 import { PgUserRepository } from "./user.postgres-repository";
 import { BcryptPasswordService } from "../auth/auth.password-service";
+import { PgAuditRepository } from "../audit/audit.postgres-repository";
+import { AuditLogger } from "../audit/audit.logger";
 import { requirePermission } from "../../src/middlewares/rbac.middleware";
 import { Resources, Actions } from "../../src/config/rbac";
 
@@ -12,7 +14,8 @@ import { Resources, Actions } from "../../src/config/rbac";
 
 const repository = new PgUserRepository();
 const passwordService = new BcryptPasswordService();
-const service = new UsersService(repository, passwordService);
+const auditLogger = new AuditLogger(new PgAuditRepository());
+const service = new UsersService(repository, passwordService, auditLogger);
 const controller = new UsersController(service);
 
 // ── Rutas ───────────────────────────────────────────────

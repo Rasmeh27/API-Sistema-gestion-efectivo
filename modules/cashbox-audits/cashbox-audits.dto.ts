@@ -1,8 +1,8 @@
 // modules/cashbox-audits/cashbox-audits.dto.ts
 
-// ── Denominaciones DOP ──────────────────────────────────
+// ── Denominaciones por moneda ─────────────────────────
 
-const DENOMINATIONS = {
+const DENOMINATIONS_DOP = {
   billete2000: 2000,
   billete1000: 1000,
   billete500: 500,
@@ -15,7 +15,54 @@ const DENOMINATIONS = {
   moneda1: 1,
 } as const;
 
-type DenominationKey = keyof typeof DENOMINATIONS;
+const DENOMINATIONS_USD = {
+  billete100: 100,
+  billete50: 50,
+  billete20: 20,
+  billete10: 10,
+  billete5: 5,
+  billete1: 1,
+  moneda050: 0.5,
+  moneda025: 0.25,
+  moneda010: 0.10,
+  moneda005: 0.05,
+  moneda001: 0.01,
+} as const;
+
+const DENOMINATIONS_EUR = {
+  billete500: 500,
+  billete200: 200,
+  billete100: 100,
+  billete50: 50,
+  billete20: 20,
+  billete10: 10,
+  billete5: 5,
+  moneda2: 2,
+  moneda1: 1,
+  moneda050: 0.5,
+  moneda020: 0.20,
+  moneda010: 0.10,
+  moneda005: 0.05,
+  moneda002: 0.02,
+  moneda001: 0.01,
+} as const;
+
+export type Currency = "DOP" | "USD" | "EUR";
+
+const DENOMINATIONS_BY_CURRENCY = {
+  DOP: DENOMINATIONS_DOP,
+  USD: DENOMINATIONS_USD,
+  EUR: DENOMINATIONS_EUR,
+} as const;
+
+type DenominationsDOP = typeof DENOMINATIONS_DOP;
+type DenominationsUSD = typeof DENOMINATIONS_USD;
+type DenominationsEUR = typeof DENOMINATIONS_EUR;
+
+type DenominationKey =
+  | keyof DenominationsDOP
+  | keyof DenominationsUSD
+  | keyof DenominationsEUR;
 
 // ── Tipos ────────────────────────────────────────────────
 
@@ -24,6 +71,7 @@ export interface CashboxAuditRecord {
   sesionCajaId: string;
   usuarioId: string;
   fecha: string;
+  moneda: Currency;
   saldoContado: number;
   saldoEsperado: number;
   diferencia: number;
@@ -33,8 +81,9 @@ export interface CashboxAuditRecord {
 
 export interface CreateAuditDto {
   sesionCajaId: string;
+  moneda: Currency;
   saldoContado: number;
-  denominaciones: Record<DenominationKey, number>;
+  denominaciones: Partial<Record<DenominationKey, number>>;
   motivoDiferencia?: string;
   observaciones?: string;
 }
@@ -67,10 +116,14 @@ function optionalString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function calculateTotal(counts: Record<DenominationKey, number>): number {
+function calculateTotal(
+  counts: Partial<Record<DenominationKey, number>>,
+  moneda: Currency
+): number {
+  const denominations = DENOMINATIONS_BY_CURRENCY[moneda] as Record<string, number>;
   let total = 0;
-  for (const [key, faceValue] of Object.entries(DENOMINATIONS)) {
-    total += counts[key as DenominationKey] * faceValue;
+  for (const [key, faceValue] of Object.entries(denominations)) {
+    total += (counts[key as DenominationKey] ?? 0) * faceValue;
   }
   return Math.round(total * 100) / 100;
 }
@@ -84,18 +137,22 @@ export function parseCreateAudit(body: unknown): CreateAuditDto {
 
   const b = body as Record<string, unknown>;
 
-  const denominaciones = {} as Record<DenominationKey, number>;
-  for (const key of Object.keys(DENOMINATIONS)) {
-    denominaciones[key as DenominationKey] = parseNonNegativeInt(
-      b[key] ?? 0,
-      key
-    );
+  const monedaRaw = (optionalString(b.moneda) ?? "DOP").toUpperCase();
+  const moneda: Currency = (["DOP", "USD", "EUR"].includes(monedaRaw) ? monedaRaw : "DOP") as Currency;
+
+  const denominations = DENOMINATIONS_BY_CURRENCY[moneda] as Record<string, number>;
+  const denominaciones = {} as Partial<Record<DenominationKey, number>>;
+  for (const key of Object.keys(denominations)) {
+    if (b[key] !== undefined) {
+      denominaciones[key as DenominationKey] = parseNonNegativeInt(b[key], key);
+    }
   }
 
-  const saldoContado = calculateTotal(denominaciones);
+  const saldoContado = calculateTotal(denominaciones, moneda);
 
   return {
     sesionCajaId: requireNonEmptyString(b.sesionCajaId, "sesionCajaId"),
+    moneda,
     saldoContado,
     denominaciones,
     motivoDiferencia: optionalString(b.motivoDiferencia),

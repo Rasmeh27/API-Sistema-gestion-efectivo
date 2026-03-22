@@ -5,7 +5,9 @@ type FundRequestErrorCode =
   | "SUCURSAL_NOT_FOUND"
   | "INVALID_AMOUNT"
   | "ALREADY_RESOLVED"
-  | "INVALID_STATUS";
+  | "INVALID_STATUS"
+  | "NOT_APPROVED"
+  | "ALREADY_EXECUTED";
 
 const HTTP_STATUS: Record<FundRequestErrorCode, number> = {
   REQUEST_NOT_FOUND: 404,
@@ -13,6 +15,8 @@ const HTTP_STATUS: Record<FundRequestErrorCode, number> = {
   INVALID_AMOUNT: 400,
   ALREADY_RESOLVED: 409,
   INVALID_STATUS: 400,
+  NOT_APPROVED: 400,
+  ALREADY_EXECUTED: 409,
 };
 
 export class FundRequestError extends Error {
@@ -67,6 +71,22 @@ export class FundRequestError extends Error {
       "INVALID_STATUS",
       HTTP_STATUS.INVALID_STATUS,
       `Estado "${status}" no es válido`
+    );
+  }
+
+  static notApproved(): FundRequestError {
+    return new FundRequestError(
+      "NOT_APPROVED",
+      HTTP_STATUS.NOT_APPROVED,
+      "Solo se pueden ejecutar solicitudes aprobadas"
+    );
+  }
+
+  static alreadyExecuted(): FundRequestError {
+    return new FundRequestError(
+      "ALREADY_EXECUTED",
+      HTTP_STATUS.ALREADY_EXECUTED,
+      "La solicitud ya fue ejecutada"
     );
   }
 }

@@ -84,33 +84,49 @@ export class PgAuditRepository implements AuditRepository {
     let idx = 1;
 
     if (filters.usuarioId) {
-      conditions.push(`usuario_id = $${idx++}`);
+      conditions.push(`ea.usuario_id = $${idx++}`);
       values.push(filters.usuarioId);
     }
 
     if (filters.accion) {
-      conditions.push(`accion = $${idx++}`);
+      conditions.push(`ea.accion = $${idx++}`);
       values.push(filters.accion);
     }
 
     if (filters.entidadTipo) {
-      conditions.push(`entidad_tipo = $${idx++}`);
+      conditions.push(`ea.entidad_tipo = $${idx++}`);
       values.push(filters.entidadTipo);
     }
 
     if (filters.entidadId) {
-      conditions.push(`entidad_id = $${idx++}`);
+      conditions.push(`ea.entidad_id = $${idx++}`);
       values.push(filters.entidadId);
     }
 
     if (filters.desde) {
-      conditions.push(`fecha >= $${idx++}`);
+      conditions.push(`ea.fecha >= $${idx++}`);
       values.push(filters.desde);
     }
 
     if (filters.hasta) {
-      conditions.push(`fecha <= $${idx++}`);
+      conditions.push(`ea.fecha <= $${idx++}`);
       values.push(filters.hasta);
+    }
+
+    // Filtro por sucursal: busca eventos de usuarios asignados a esa sucursal
+    // o eventos cuya entidad sea una caja/sesión de esa sucursal
+    if (filters.sucursalId) {
+      conditions.push(`(
+        ea.usuario_id IN (SELECT id FROM usuario WHERE sucursal_default_id = $${idx})
+        OR ea.entidad_id IN (SELECT id::text FROM caja WHERE sucursal_id = $${idx})
+        OR ea.entidad_id IN (
+          SELECT sc.id::text FROM sesioncaja sc
+          JOIN caja c ON c.id = sc.caja_id
+          WHERE c.sucursal_id = $${idx}
+        )
+      )`);
+      values.push(filters.sucursalId);
+      idx++;
     }
 
     const where = conditions.length > 0
@@ -118,7 +134,20 @@ export class PgAuditRepository implements AuditRepository {
       : "";
 
     const { rows } = await query<AuditRow>(
-      `${AUDIT_SELECT} ${where} order by fecha desc`,
+      `select
+        ea.id::text as id,
+        ea.fecha,
+        ea.usuario_id::text as usuario_id,
+        ea.accion,
+        ea.entidad_tipo,
+        ea.entidad_id::text as entidad_id,
+        ea.resumen,
+        ea.metadata,
+        ea.before_json,
+        ea.after_json
+      from eventoauditoria ea
+      ${where}
+      order by ea.fecha desc`,
       values
     );
 

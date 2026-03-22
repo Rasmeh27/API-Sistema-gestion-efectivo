@@ -1,6 +1,7 @@
 export interface AtmRecord {
   id: string;
   sucursalId: string;
+  cajaId: string;
   codigo: string;
   nombre: string;
   estado: string;

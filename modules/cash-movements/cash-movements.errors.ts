@@ -5,7 +5,11 @@ type CashMovementErrorCode =
   | "SESSION_NOT_FOUND"
   | "SESSION_NOT_OPEN"
   | "INVALID_AMOUNT"
-  | "INSUFFICIENT_FUNDS";
+  | "INSUFFICIENT_FUNDS"
+  | "CASHBOX_NOT_FOUND"
+  | "SAME_CASHBOX_TRANSFER"
+  | "LIMIT_EXCEEDED"
+  | "ALREADY_VOIDED";
 
 const HTTP_STATUS: Record<CashMovementErrorCode, number> = {
   MOVEMENT_NOT_FOUND: 404,
@@ -13,6 +17,10 @@ const HTTP_STATUS: Record<CashMovementErrorCode, number> = {
   SESSION_NOT_OPEN: 409,
   INVALID_AMOUNT: 400,
   INSUFFICIENT_FUNDS: 409,
+  CASHBOX_NOT_FOUND: 404,
+  SAME_CASHBOX_TRANSFER: 400,
+  LIMIT_EXCEEDED: 400,
+  ALREADY_VOIDED: 409,
 };
 
 export class CashMovementError extends Error {
@@ -67,6 +75,38 @@ export class CashMovementError extends Error {
       "INSUFFICIENT_FUNDS",
       HTTP_STATUS.INSUFFICIENT_FUNDS,
       "Fondos insuficientes para realizar el egreso"
+    );
+  }
+
+  static cashboxNotFound(id: string): CashMovementError {
+    return new CashMovementError(
+      "CASHBOX_NOT_FOUND",
+      HTTP_STATUS.CASHBOX_NOT_FOUND,
+      `Caja con id "${id}" no encontrada`
+    );
+  }
+
+  static sameCashboxTransfer(): CashMovementError {
+    return new CashMovementError(
+      "SAME_CASHBOX_TRANSFER",
+      HTTP_STATUS.SAME_CASHBOX_TRANSFER,
+      "La caja origen y destino no pueden ser la misma para una transferencia"
+    );
+  }
+
+  static limitExceeded(monto: number, limite: number): CashMovementError {
+    return new CashMovementError(
+      "LIMIT_EXCEEDED",
+      HTTP_STATUS.LIMIT_EXCEEDED,
+      `El monto ${monto} excede el límite operativo de la caja (${limite})`
+    );
+  }
+
+  static alreadyVoided(id: string): CashMovementError {
+    return new CashMovementError(
+      "ALREADY_VOIDED",
+      HTTP_STATUS.ALREADY_VOIDED,
+      `El movimiento "${id}" ya fue anulado`
     );
   }
 }

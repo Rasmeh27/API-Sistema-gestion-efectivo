@@ -11,4 +11,5 @@ export interface CashMovementRepository {
   findById(id: string): Promise<CashMovementRecord | null>;
   list(filters: ListMovementsQuery): Promise<CashMovementRecord[]>;
   sumBySession(sesionCajaId: string): Promise<{ ingresos: number; egresos: number }>;
+  voidById(id: string): Promise<CashMovementRecord | null>;
 }

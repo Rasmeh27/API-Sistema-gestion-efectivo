@@ -4,10 +4,20 @@ import {
   KpiSnapshotRecord,
   CreateKpiSnapshotDto,
   ListKpiSnapshotsQuery,
+  CashSummary,
+  TransactionVolume,
+  BalanceAlert,
+  RecentOperation,
 } from "./kpis.dto";
 
 export interface KpiRepository {
   create(dto: CreateKpiSnapshotDto): Promise<KpiSnapshotRecord>;
   findById(id: string): Promise<KpiSnapshotRecord | null>;
   list(filters: ListKpiSnapshotsQuery): Promise<KpiSnapshotRecord[]>;
+
+  // Dashboard en tiempo real
+  getCashSummary(sucursalId?: string): Promise<CashSummary>;
+  getTransactionVolume(intervalHours: number, sucursalId?: string): Promise<TransactionVolume[]>;
+  getBalanceAlerts(limit: number, sucursalId?: string): Promise<BalanceAlert[]>;
+  getRecentOperations(limit: number): Promise<RecentOperation[]>;
 }

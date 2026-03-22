@@ -10,11 +10,13 @@ import {
 } from "./users.dto";
 import { UserErrors } from "./users.errors";
 import { UserRepository } from "./users.repository";
+import { AuditLogger } from "../audit/audit.logger";
 
 export class UsersService {
   constructor(
     private readonly users: UserRepository,
-    private readonly passwords: PasswordService
+    private readonly passwords: PasswordService,
+    private readonly audit: AuditLogger
   ) {}
 
   async create(dto: CreateUserDto): Promise<UserRecord> {
@@ -22,11 +24,22 @@ export class UsersService {
 
     const passwordHash = await this.passwords.hash(dto.password);
 
-    return this.users.create({
+    const user = await this.users.create({
       ...dto,
       status: "ACTIVO",
       passwordHash,
     });
+
+    await this.audit.log({
+      usuarioId: user.id,
+      accion: "USUARIO_CREADO",
+      entidadTipo: "USUARIO",
+      entidadId: user.id,
+      resumen: `Usuario creado: ${user.email}`,
+      afterJson: JSON.stringify({ name: user.name, email: user.email, roleIds: user.roleIds }),
+    });
+
+    return user;
   }
 
   async list(query: ListUsersQuery): Promise<{
@@ -58,11 +71,22 @@ export class UsersService {
       await this.ensureEmailAvailableForUpdate(patch.email, id);
     }
 
+    const before = await this.users.findById(id);
     const updated = await this.users.update(id, patch);
 
     if (!updated) {
       throw UserErrors.notFound(id);
     }
+
+    await this.audit.log({
+      usuarioId: id,
+      accion: "USUARIO_EDITADO",
+      entidadTipo: "USUARIO",
+      entidadId: id,
+      resumen: `Usuario editado: ${updated.email}`,
+      beforeJson: before ? JSON.stringify({ name: before.name, email: before.email, roleIds: before.roleIds }) : undefined,
+      afterJson: JSON.stringify({ name: updated.name, email: updated.email, roleIds: updated.roleIds }),
+    });
 
     return updated;
   }
@@ -71,11 +95,22 @@ export class UsersService {
     id: string,
     status: UserStatus
   ): Promise<UserRecord> {
+    const before = await this.users.findById(id);
     const updated = await this.users.updateStatus(id, status);
 
     if (!updated) {
       throw UserErrors.notFound(id);
     }
+
+    await this.audit.log({
+      usuarioId: id,
+      accion: "USUARIO_EDITADO",
+      entidadTipo: "USUARIO",
+      entidadId: id,
+      resumen: `Estado de usuario cambiado a ${status}`,
+      beforeJson: before ? JSON.stringify({ status: before.status }) : undefined,
+      afterJson: JSON.stringify({ status }),
+    });
 
     return updated;
   }

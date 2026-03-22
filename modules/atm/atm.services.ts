@@ -37,7 +37,7 @@ export class AtmService {
       moneda: atm.moneda,
       referencia: `DEPÓSITO ATM ${atm.codigo}`,
       observacion: dto.motivo,
-      cajaId: atm.sucursalId,
+      cajaId: atm.cajaId,
       sesionCajaId,
     }, usuarioId);
 
@@ -65,7 +65,7 @@ export class AtmService {
       moneda: atm.moneda,
       referencia: `RETIRO ATM ${atm.codigo}`,
       observacion: dto.motivo,
-      cajaId: atm.sucursalId,
+      cajaId: atm.cajaId,
       sesionCajaId,
     }, usuarioId);
 

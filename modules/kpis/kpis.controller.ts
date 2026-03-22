@@ -4,6 +4,7 @@ import { NextFunction, Request, Response } from "express";
 import {
   parseCreateKpiSnapshot,
   parseListKpiSnapshotsQuery,
+  parseDashboardQuery,
 } from "./kpis.dto";
 import { KpiError } from "./kpis.errors";
 import { KpisService } from "./kpis.service";
@@ -38,6 +39,17 @@ export class KpisController {
       const items = await this.service.list(filters);
 
       return res.status(200).json({ data: items });
+    } catch (error) {
+      return this.handleError(error, res, next);
+    }
+  };
+
+  dashboard = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const filters = parseDashboardQuery(req.query);
+      const data = await this.service.dashboard(filters);
+
+      return res.status(200).json({ data });
     } catch (error) {
       return this.handleError(error, res, next);
     }

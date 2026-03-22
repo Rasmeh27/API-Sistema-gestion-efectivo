@@ -5,6 +5,7 @@ import { AtmRepository } from "./atm.repository";
 type AtmRow = {
   id: string;
   sucursal_id: string;
+  caja_id: string;
   codigo: string;
   nombre: string;
   estado: string;
@@ -16,6 +17,7 @@ const ATM_SELECT = `
   select
     id::text as id,
     sucursal_id::text as sucursal_id,
+    caja_id::text as caja_id,
     codigo,
     nombre,
     estado,
@@ -35,27 +37,28 @@ export class PgAtmRepository implements AtmRepository {
       `update atm
        set limite_operativo = limite_operativo + $1
        where id = $2
-       returning id::text as id, sucursal_id::text as sucursal_id, codigo, nombre, estado, moneda, limite_operativo`,
+       returning id::text as id, sucursal_id::text as sucursal_id, caja_id::text as caja_id, codigo, nombre, estado, moneda, limite_operativo`,
       [dto.monto, id]
     );
     return this.toRecord(rows[0]);
   }
 
-async withdraw(id: string, dto: WithdrawDto): Promise<AtmRecord | null> {
-  const { rows } = await query<AtmRow>(
-    `update atm
-     set limite_operativo = limite_operativo - $1
-     where id = $2 and limite_operativo >= $1
-     returning id::text as id, sucursal_id::text as sucursal_id, codigo, nombre, estado, moneda, limite_operativo`,
-    [dto.monto, id]
-  );
-  return rows[0] ? this.toRecord(rows[0]) : null; // ← correcto
-}
+  async withdraw(id: string, dto: WithdrawDto): Promise<AtmRecord | null> {
+    const { rows } = await query<AtmRow>(
+      `update atm
+       set limite_operativo = limite_operativo - $1
+       where id = $2 and limite_operativo >= $1
+       returning id::text as id, sucursal_id::text as sucursal_id, caja_id::text as caja_id, codigo, nombre, estado, moneda, limite_operativo`,
+      [dto.monto, id]
+    );
+    return rows[0] ? this.toRecord(rows[0]) : null;
+  }
 
   private toRecord(row: AtmRow): AtmRecord {
     return {
       id: row.id,
       sucursalId: row.sucursal_id,
+      cajaId: row.caja_id,
       codigo: row.codigo,
       nombre: row.nombre,
       estado: row.estado,

@@ -31,6 +31,7 @@ export interface ListAuditEventsQuery {
   accion?: string;
   entidadTipo?: string;
   entidadId?: string;
+  sucursalId?: string;
   desde?: string;
   hasta?: string;
 }
@@ -108,6 +109,10 @@ export function parseListAuditEventsQuery(query: unknown): ListAuditEventsQuery 
     entidadId:
       typeof q.entidadId === "string" && q.entidadId.trim().length > 0
         ? q.entidadId.trim()
+        : undefined,
+    sucursalId:
+      typeof q.sucursalId === "string" && q.sucursalId.trim().length > 0
+        ? q.sucursalId.trim()
         : undefined,
     desde,
     hasta,

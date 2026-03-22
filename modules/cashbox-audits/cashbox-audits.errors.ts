@@ -3,60 +3,43 @@
 type CashboxAuditErrorCode =
   | "AUDIT_NOT_FOUND"
   | "SESSION_NOT_FOUND"
-  | "SESSION_NOT_CLOSED"
-  | "INVALID_AMOUNT";
+  | "SESSION_NOT_OPEN";
 
-const HTTP_STATUS: Record<CashboxAuditErrorCode, number> = {
-  AUDIT_NOT_FOUND: 404,
-  SESSION_NOT_FOUND: 404,
-  SESSION_NOT_CLOSED: 409,
-  INVALID_AMOUNT: 400,
-};
+const HTTP_STATUS = {
+  BAD_REQUEST: 400,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+} as const;
 
 export class CashboxAuditError extends Error {
-  readonly code: CashboxAuditErrorCode;
-  readonly status: number;
-
-  private constructor(
-    code: CashboxAuditErrorCode,
-    status: number,
+  constructor(
+    public readonly code: CashboxAuditErrorCode,
+    public readonly status: number,
     message: string
   ) {
     super(message);
-    this.code = code;
-    this.status = status;
-    this.name = "CashboxAuditError";
-  }
-
-  static notFound(id: string): CashboxAuditError {
-    return new CashboxAuditError(
-      "AUDIT_NOT_FOUND",
-      HTTP_STATUS.AUDIT_NOT_FOUND,
-      `Arqueo con id "${id}" no encontrado`
-    );
-  }
-
-  static sessionNotFound(id: string): CashboxAuditError {
-    return new CashboxAuditError(
-      "SESSION_NOT_FOUND",
-      HTTP_STATUS.SESSION_NOT_FOUND,
-      `Sesión de caja con id "${id}" no encontrada`
-    );
-  }
-
-  static sessionNotClosed(): CashboxAuditError {
-    return new CashboxAuditError(
-      "SESSION_NOT_CLOSED",
-      HTTP_STATUS.SESSION_NOT_CLOSED,
-      "La sesión debe estar cerrada para realizar un arqueo"
-    );
-  }
-
-  static invalidAmount(field: string): CashboxAuditError {
-    return new CashboxAuditError(
-      "INVALID_AMOUNT",
-      HTTP_STATUS.INVALID_AMOUNT,
-      `El campo "${field}" debe ser un número positivo o cero`
-    );
   }
 }
+
+export const CashboxAuditErrors = {
+  notFound: (id: string) =>
+    new CashboxAuditError(
+      "AUDIT_NOT_FOUND",
+      HTTP_STATUS.NOT_FOUND,
+      `Arqueo no encontrado: ${id}`
+    ),
+
+  sessionNotFound: (id: string) =>
+    new CashboxAuditError(
+      "SESSION_NOT_FOUND",
+      HTTP_STATUS.NOT_FOUND,
+      `Sesión de caja no encontrada: ${id}`
+    ),
+
+  sessionNotOpen: () =>
+    new CashboxAuditError(
+      "SESSION_NOT_OPEN",
+      HTTP_STATUS.CONFLICT,
+      "La sesión debe estar abierta para realizar un arqueo"
+    ),
+};

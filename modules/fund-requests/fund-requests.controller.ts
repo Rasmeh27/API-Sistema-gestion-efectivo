@@ -38,6 +38,19 @@ export class FundRequestsController {
     }
   };
 
+  execute = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await this.service.execute(
+        this.getParamId(req),
+        req.auth!.sub
+      );
+
+      return res.status(200).json({ data: result });
+    } catch (error) {
+      return this.handleError(error, res, next);
+    }
+  };
+
   getById = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const request = await this.service.getById(this.getParamId(req));

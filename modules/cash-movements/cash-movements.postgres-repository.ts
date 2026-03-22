@@ -117,6 +117,11 @@ export class PgCashMovementRepository implements CashMovementRepository {
       values.push(filters.tipo);
     }
 
+    if (filters.moneda) {
+      conditions.push(`moneda = $${idx++}`);
+      values.push(filters.moneda);
+    }
+
     const where = conditions.length > 0
       ? `where ${conditions.join(" and ")}`
       : "";
@@ -143,6 +148,17 @@ export class PgCashMovementRepository implements CashMovementRepository {
       ingresos: Number(rows[0].ingresos),
       egresos: Number(rows[0].egresos),
     };
+  }
+
+  async voidById(id: string): Promise<CashMovementRecord | null> {
+    const { rowCount } = await query(
+      `update movimientoefectivo set estado = 'ANULADO' where id = $1 and estado = 'ACTIVO'`,
+      [id]
+    );
+
+    if ((rowCount ?? 0) === 0) return null;
+
+    return this.findById(id);
   }
 
   // ── Privados ──────────────────────────────────────────

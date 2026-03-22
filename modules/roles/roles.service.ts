@@ -3,15 +3,29 @@
 import { CreateRoleDto, RoleRecord, UpdateRoleDto } from "./roles.dto";
 import { RoleErrors } from "./roles.errors";
 import { RoleRepository } from "./roles.repository";
+import { AuditLogger } from "../audit/audit.logger";
 
 export class RolesService {
-  constructor(private readonly roles: RoleRepository) {}
+  constructor(
+    private readonly roles: RoleRepository,
+    private readonly audit: AuditLogger
+  ) {}
 
   async create(dto: CreateRoleDto): Promise<RoleRecord> {
     await this.ensureNameAvailable(dto.nombre);
     await this.ensurePermissionsExist(dto.permissionsIds);
 
-    return this.roles.create(dto);
+    const role = await this.roles.create(dto);
+
+    await this.audit.log({
+      accion: "ROL_CREADO",
+      entidadTipo: "ROL",
+      entidadId: role.id,
+      resumen: `Rol creado: ${role.nombre}`,
+      afterJson: JSON.stringify({ nombre: role.nombre, permissions: role.permissions }),
+    });
+
+    return role;
   }
 
   async list(): Promise<RoleRecord[]> {
@@ -37,11 +51,21 @@ export class RolesService {
       await this.ensurePermissionsExist(dto.permissionsIds);
     }
 
+    const before = await this.roles.findById(id);
     const updated = await this.roles.update(id, dto);
 
     if (!updated) {
       throw RoleErrors.notFound(id);
     }
+
+    await this.audit.log({
+      accion: "PERMISOS_MODIFICADOS",
+      entidadTipo: "ROL",
+      entidadId: id,
+      resumen: `Rol editado: ${updated.nombre}`,
+      beforeJson: before ? JSON.stringify({ nombre: before.nombre, permissions: before.permissions }) : undefined,
+      afterJson: JSON.stringify({ nombre: updated.nombre, permissions: updated.permissions }),
+    });
 
     return updated;
   }
@@ -53,11 +77,20 @@ export class RolesService {
       throw RoleErrors.roleInUse();
     }
 
+    const role = await this.roles.findById(id);
     const deleted = await this.roles.delete(id);
 
     if (!deleted) {
       throw RoleErrors.notFound(id);
     }
+
+    await this.audit.log({
+      accion: "ROL_ELIMINADO",
+      entidadTipo: "ROL",
+      entidadId: id,
+      resumen: `Rol eliminado: ${role?.nombre ?? id}`,
+      beforeJson: role ? JSON.stringify({ nombre: role.nombre }) : undefined,
+    });
   }
 
   // ── Privados ──────────────────────────────────────────

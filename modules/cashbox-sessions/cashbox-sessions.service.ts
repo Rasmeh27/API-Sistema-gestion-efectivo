@@ -9,13 +9,17 @@ import {
 import { CashboxSessionErrors } from "./cashbox-sessions.errors";
 import { CashboxSessionRepository } from "./cashbox-sessions.repository";
 import { CashboxRepository } from "../cashboxes/cashboxes.repository";
+import { CashMovementRepository } from "../cash-movements/cash-movements.repository";
+import { AuditLogger } from "../audit/audit.logger";
 import { nowISO } from "../../src/shared/utils/date";
 import { moneyDifference, roundMoney } from "../../src/shared/utils/money";
 
 export class CashboxSessionsService {
   constructor(
     private readonly sessions: CashboxSessionRepository,
-    private readonly cashboxes: CashboxRepository
+    private readonly cashboxes: CashboxRepository,
+    private readonly movements: CashMovementRepository,
+    private readonly audit: AuditLogger
   ) {}
 
   async open(dto: OpenSessionDto, userId: string): Promise<CashboxSessionRecord> {
@@ -35,12 +39,22 @@ export class CashboxSessionsService {
       throw CashboxSessionErrors.alreadyOpen(dto.cajaId);
     }
 
-    return this.sessions.create({
+    const session = await this.sessions.create({
       ...dto,
       saldoInicial: roundMoney(dto.saldoInicial),
       usuarioAperturaId: userId,
       fechaApertura: nowISO(),
     });
+
+    await this.audit.log({
+      usuarioId: userId,
+      accion: "APERTURA_CAJA",
+      entidadTipo: "SESION_CAJA",
+      entidadId: session.id,
+      resumen: `Apertura de caja ${dto.cajaId} con saldo inicial ${dto.saldoInicial}`,
+    });
+
+    return session;
   }
 
   async close(
@@ -59,7 +73,12 @@ export class CashboxSessionsService {
     }
 
     const saldoFinalReal = roundMoney(dto.saldoFinalReal);
-    const saldoFinalEsperado = roundMoney(session.saldoInicial); // TODO: sumar movimientos cuando exista el módulo
+
+    const totals = await this.movements.sumBySession(sessionId);
+    const saldoFinalEsperado = roundMoney(
+      session.saldoInicial + totals.ingresos - totals.egresos
+    );
+
     const diferencia = moneyDifference(saldoFinalReal, saldoFinalEsperado);
 
     const closed = await this.sessions.close(sessionId, {
@@ -73,6 +92,14 @@ export class CashboxSessionsService {
     if (!closed) {
       throw CashboxSessionErrors.notFound(sessionId);
     }
+
+    await this.audit.log({
+      usuarioId: userId,
+      accion: "CIERRE_CAJA",
+      entidadTipo: "SESION_CAJA",
+      entidadId: sessionId,
+      resumen: `Cierre de caja. Esperado: ${saldoFinalEsperado}, Real: ${saldoFinalReal}, Diferencia: ${diferencia}`,
+    });
 
     return closed;
   }

@@ -7,8 +7,11 @@ import { PgAtmRepository } from "./atm.postgres-repository";
 import { PgCashMovementRepository } from "../cash-movements/cash-movements.postgres-repository";
 import { CashMovementsService } from "../cash-movements/cash-movements.service";
 import { PgCashboxSessionRepository } from "../cashbox-sessions/cashbox-sessions.postgres-repository";
+import { PgCashboxRepository } from "../cashboxes/cashboxes.postgres-repository";
 import { SucursalesService } from "../sucursales/sucursales.service";
 import { PgSucursalRepository } from "../sucursales/sucursales.postgres-repository";
+import { AuditLogger } from "../audit/audit.logger";
+import { PgAuditRepository } from "../audit/audit.postgres-repository";
 import { requirePermission } from "../../src/middlewares/rbac.middleware";
 import { Resources, Actions } from "../../src/config/rbac";
 
@@ -20,9 +23,13 @@ const atmRepository = new PgAtmRepository();
 // Repositorios y servicio de movimientos
 const cashMovementRepository = new PgCashMovementRepository();
 const cashboxSessionRepository = new PgCashboxSessionRepository();
+const cashboxRepository = new PgCashboxRepository();
+const auditLogger = new AuditLogger(new PgAuditRepository());
 const cashMovementsService = new CashMovementsService(
   cashMovementRepository,
-  cashboxSessionRepository
+  cashboxSessionRepository,
+  cashboxRepository,
+  auditLogger
 );
 
 // Repositorio y servicio de sucursales

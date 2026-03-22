@@ -22,6 +22,7 @@ type RequestRow = {
   destino_scope: string;
   destino_id: string;
   monto: number;
+  moneda: string;
   motivo: string;
   prioridad: Priority;
   estado: RequestStatus;
@@ -48,7 +49,7 @@ const REQUEST_SELECT = `
     id::text as id,
     origen_scope, origen_id::text as origen_id,
     destino_scope, destino_id::text as destino_id,
-    monto, motivo, prioridad, estado,
+    monto, moneda, motivo, prioridad, estado,
     solicitada_por::text as solicitada_por,
     fecha_solicitud,
     aprobada_por::text as aprobada_por,
@@ -76,18 +77,18 @@ export class PgFundRequestRepository implements FundRequestRepository {
     const { rows } = await query<RequestRow>(
       `insert into solicitudfondos
         (origen_scope, origen_id, destino_scope, destino_id,
-         monto, motivo, prioridad, estado, solicitada_por, fecha_solicitud)
-       values ($1, $2, $3, $4, $5, $6, $7, 'PENDIENTE', $8, now())
+         monto, moneda, motivo, prioridad, estado, solicitada_por, fecha_solicitud)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDIENTE', $9, now())
        returning
          id::text as id, origen_scope, origen_id::text as origen_id,
          destino_scope, destino_id::text as destino_id,
-         monto, motivo, prioridad, estado,
+         monto, moneda, motivo, prioridad, estado,
          solicitada_por::text as solicitada_por, fecha_solicitud,
          aprobada_por::text as aprobada_por, fecha_aprobacion, motivo_rechazo`,
       [
         dto.origenScope, dto.origenId,
         dto.destinoScope, dto.destinoId,
-        dto.monto, dto.motivo,
+        dto.monto, dto.moneda ?? "DOP", dto.motivo,
         dto.prioridad ?? "MEDIA",
         solicitadaPor,
       ]
@@ -166,6 +167,19 @@ export class PgFundRequestRepository implements FundRequestRepository {
     return this.findById(id);
   }
 
+  async execute(id: string): Promise<FundRequestRecord | null> {
+    const { rowCount } = await query(
+      `update solicitudfondos
+       set estado = 'EJECUTADA'
+       where id = $1 and estado = 'APROBADA'`,
+      [id]
+    );
+
+    if ((rowCount ?? 0) === 0) return null;
+
+    return this.findById(id);
+  }
+
   async createApproval(
     solicitudId: string,
     dto: ResolveRequestDto,
@@ -204,6 +218,7 @@ export class PgFundRequestRepository implements FundRequestRepository {
       destinoScope: row.destino_scope,
       destinoId: row.destino_id,
       monto: row.monto,
+      moneda: row.moneda ?? "DOP",
       motivo: row.motivo,
       prioridad: row.prioridad,
       estado: row.estado,

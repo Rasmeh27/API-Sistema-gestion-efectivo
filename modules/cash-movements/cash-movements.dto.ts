@@ -2,13 +2,11 @@
 
 // ── Tipos ────────────────────────────────────────────────
 
-export type MovementType = "INGRESO" | "EGRESO";
+export type MovementType = "INGRESO" | "EGRESO" | "TRANSFERENCIA" | "REABASTECIMIENTO";
 
-const VALID_TYPES: MovementType[] = ["INGRESO", "EGRESO"];
+const VALID_TYPES: MovementType[] = ["INGRESO", "EGRESO", "TRANSFERENCIA", "REABASTECIMIENTO"];
 
 export type MovementStatus = "ACTIVO" | "ANULADO";
-
-const VALID_STATUSES: MovementStatus[] = ["ACTIVO", "ANULADO"];
 
 export interface CashMovementRecord {
   id: string;
@@ -40,10 +38,13 @@ export interface CreateMovementDto {
   cajaDestinoId?: string;
 }
 
+export type Currency = "DOP" | "USD" | "EUR";
+
 export interface ListMovementsQuery {
   sesionCajaId?: string;
   cajaId?: string;
   tipo?: MovementType;
+  moneda?: Currency;
 }
 
 // ── Helpers ──────────────────────────────────────────────
@@ -78,6 +79,26 @@ function optionalString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+// ── Validaciones por tipo ────────────────────────────────
+
+function validateTransferFields(dto: CreateMovementDto): void {
+  if (!dto.cajaOrigenId) {
+    throw new Error('"cajaOrigenId" es requerido para transferencias');
+  }
+  if (!dto.cajaDestinoId) {
+    throw new Error('"cajaDestinoId" es requerido para transferencias');
+  }
+  if (dto.cajaOrigenId === dto.cajaDestinoId) {
+    throw new Error("La caja origen y destino no pueden ser la misma");
+  }
+}
+
+function validateReabastecimientoFields(dto: CreateMovementDto): void {
+  if (!dto.cajaDestinoId) {
+    throw new Error('"cajaDestinoId" es requerido para reabastecimiento');
+  }
+}
+
 // ── Parsers ──────────────────────────────────────────────
 
 export function parseCreateMovement(body: unknown): CreateMovementDto {
@@ -87,7 +108,7 @@ export function parseCreateMovement(body: unknown): CreateMovementDto {
 
   const b = body as Record<string, unknown>;
 
-  return {
+  const dto: CreateMovementDto = {
     tipo: parseMovementType(b.tipo),
     medio: requireNonEmptyString(b.medio, "medio"),
     monto: requirePositiveNumber(b.monto, "monto"),
@@ -99,7 +120,14 @@ export function parseCreateMovement(body: unknown): CreateMovementDto {
     cajaOrigenId: optionalString(b.cajaOrigenId),
     cajaDestinoId: optionalString(b.cajaDestinoId),
   };
+
+  if (dto.tipo === "TRANSFERENCIA") validateTransferFields(dto);
+  if (dto.tipo === "REABASTECIMIENTO") validateReabastecimientoFields(dto);
+
+  return dto;
 }
+
+const VALID_CURRENCIES: Currency[] = ["DOP", "USD", "EUR"];
 
 export function parseListMovementsQuery(query: unknown): ListMovementsQuery {
   if (!query || typeof query !== "object") return {};
@@ -118,6 +146,10 @@ export function parseListMovementsQuery(query: unknown): ListMovementsQuery {
     tipo:
       typeof q.tipo === "string" && VALID_TYPES.includes(q.tipo.toUpperCase() as MovementType)
         ? (q.tipo.toUpperCase() as MovementType)
+        : undefined,
+    moneda:
+      typeof q.moneda === "string" && VALID_CURRENCIES.includes(q.moneda.toUpperCase() as Currency)
+        ? (q.moneda.toUpperCase() as Currency)
         : undefined,
   };
 }

@@ -17,4 +17,6 @@ export interface CashboxAuditRepository {
   findById(id: string): Promise<CashboxAuditRecord | null>;
 
   list(filters: ListAuditsQuery): Promise<CashboxAuditRecord[]>;
+
+  existsBySesionCajaId(sesionCajaId: string): Promise<boolean>;
 }
