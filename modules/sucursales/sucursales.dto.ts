@@ -7,6 +7,7 @@ export type SucursalRecord = {
   codigo: string;
   nombre: string;
   estado: SucursalStatus;
+  total: number;
 };
 
 export type CreateSucursalDto = {
