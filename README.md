@@ -1,7 +1,3 @@
-Aquí tienes el README completo:
-
----
-
 # Sistema de Gestión de Efectivo Bancario
 
 API REST para la gestión integral de efectivo en sucursales bancarias. Controla cajas, movimientos, ATMs, arqueos, solicitudes de fondos, auditoría y KPIs con soporte multi-divisa (DOP, USD, EUR).
