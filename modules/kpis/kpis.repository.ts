@@ -8,6 +8,11 @@ import {
   TransactionVolume,
   BalanceAlert,
   RecentOperation,
+  TrendQuery,
+  TrendDataPoint,
+  AverageBalanceQuery,
+  AverageBalanceResponse,
+  GeographicDistributionItem,
 } from "./kpis.dto";
 
 export interface KpiRepository {
@@ -20,4 +25,13 @@ export interface KpiRepository {
   getTransactionVolume(intervalHours: number, sucursalId?: string): Promise<TransactionVolume[]>;
   getBalanceAlerts(limit: number, sucursalId?: string): Promise<BalanceAlert[]>;
   getRecentOperations(limit: number): Promise<RecentOperation[]>;
+
+  // Trend (Time-Series)
+  getTrend(query: TrendQuery): Promise<TrendDataPoint[]>;
+
+  // Average Balance
+  getAverageBalance(query: AverageBalanceQuery): Promise<AverageBalanceResponse>;
+
+  // Geographic Distribution
+  getGeographicDistribution(): Promise<GeographicDistributionItem[]>;
 }

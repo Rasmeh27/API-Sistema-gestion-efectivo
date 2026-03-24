@@ -8,18 +8,24 @@ export type SucursalRecord = {
   nombre: string;
   estado: SucursalStatus;
   total: number;
+  latitud: number | null;
+  longitud: number | null;
 };
 
 export type CreateSucursalDto = {
   codigo: string;
   nombre: string;
   estado?: SucursalStatus;
+  latitud?: number;
+  longitud?: number;
 };
 
 export type UpdateSucursalDto = {
   codigo?: string;
   nombre?: string;
   estado?: SucursalStatus;
+  latitud?: number | null;
+  longitud?: number | null;
 };
 
 // ── Parsers ──────────────────────────────────────────────
@@ -62,6 +68,13 @@ function parseStatus(value: unknown, field: string): SucursalStatus {
   return raw as SucursalStatus;
 }
 
+function optionalNumber(value: unknown, field: string): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const num = Number(value);
+  if (isNaN(num)) throw new Error(`${field} debe ser un número válido`);
+  return num;
+}
+
 export function parseCreateSucursal(input: unknown): CreateSucursalDto {
   const body = requireObject(input);
 
@@ -71,6 +84,8 @@ export function parseCreateSucursal(input: unknown): CreateSucursalDto {
     estado: body.estado !== undefined
       ? parseStatus(body.estado, "estado")
       : undefined,
+    latitud: optionalNumber(body.latitud, "latitud"),
+    longitud: optionalNumber(body.longitud, "longitud"),
   };
 }
 
@@ -90,6 +105,14 @@ export function parseUpdateSucursal(input: unknown): UpdateSucursalDto {
 
   if ("estado" in body && body.estado !== undefined) {
     result.estado = parseStatus(body.estado, "estado");
+  }
+
+  if ("latitud" in body) {
+    result.latitud = body.latitud === null ? null : optionalNumber(body.latitud, "latitud") ?? null;
+  }
+
+  if ("longitud" in body) {
+    result.longitud = body.longitud === null ? null : optionalNumber(body.longitud, "longitud") ?? null;
   }
 
   if (Object.keys(result).length === 0) {
