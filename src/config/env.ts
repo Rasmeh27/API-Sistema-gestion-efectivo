@@ -35,9 +35,7 @@ function readBoolean(name: string, fallback: boolean): boolean {
   if (truthy.includes(raw)) return true;
   if (falsy.includes(raw)) return false;
 
-  throw new Error(
-    `Valor booleano inválido para ${name}: "${raw}"`
-  );
+  throw new Error(`Valor booleano inválido para ${name}: "${raw}"`);
 }
 
 function readPositiveInt(name: string, fallback: number): number {
@@ -48,12 +46,21 @@ function readPositiveInt(name: string, fallback: number): number {
   const value = Number(raw);
 
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(
-      `Entero positivo inválido para ${name}: "${raw}"`
-    );
+    throw new Error(`Entero positivo inválido para ${name}: "${raw}"`);
   }
 
   return value;
+}
+
+function readStringArray(name: string, fallback: string[]): string[] {
+  const raw = process.env[name]?.trim();
+
+  if (!raw) return fallback;
+
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 // ── Validación de NodeEnv ───────────────────────────────
@@ -71,14 +78,23 @@ function readNodeEnv(): NodeEnv {
   return raw as NodeEnv;
 }
 
+// ── Derivados ───────────────────────────────────────────
+
+const nodeEnv = readNodeEnv();
+
 // ── Exportación ─────────────────────────────────────────
 
 export const env = {
   // Server
-  nodeEnv: readNodeEnv(),
+  nodeEnv,
   port: readPositiveInt("PORT", 3000),
-  isProduction: readNodeEnv() === "production",
-  isDevelopment: readNodeEnv() === "development",
+  isProduction: nodeEnv === "production",
+  isDevelopment: nodeEnv === "development",
+
+  // CORS
+  corsAllowedOrigins: readStringArray("CORS_ALLOWED_ORIGINS", [
+    "http://localhost:5173",
+  ]),
 
   // Database
   databaseUrl: readRequired("DATABASE_URL"),

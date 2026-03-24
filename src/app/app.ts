@@ -27,7 +27,7 @@ export function startServer(): http.Server {
   const app = createApp();
   const server = http.createServer(app);
 
-  server.listen(env.port, () => {
+  server.listen(env.port, "0.0.0.0", () => {
     console.log(
       `[server] listening on port ${env.port} (${env.nodeEnv})`
     );
@@ -44,7 +44,20 @@ function configureMiddleware(app: express.Express): void {
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
-  app.use(cors({origin: "http://localhost:5173", credentials: true}))
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin) {
+          return callback(null, true);
+        }
+
+        const isAllowed = env.corsAllowedOrigins.includes(origin);
+
+        return callback(null, isAllowed);
+      },
+      credentials: true,
+    })
+  );
 }
 
 function configureRoutes(app: express.Express): void {
