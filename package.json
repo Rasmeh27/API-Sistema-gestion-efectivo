@@ -12,27 +12,23 @@
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.3.2",
     "@types/pg": "^8.18.0",
     "@types/supertest": "^2.0.12",
     "@types/uuid": "^10.0.0",
+    "jest": "^30.3.0",
     "supabase": "^2.77.0",
     "supertest": "^6.3.3",
+    "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/src/index.js",
+    "test": "jest",
+    "test:users": "tsx scripts/tests/users-tests.ts",
     "seed": "tsx db/seeds/seed.ts",
-    "test:flow": "tsx scripts/tests/full-flow-test.ts",
-    "test:users": "tsx scripts/tests/users-tests.ts"
-  },
-  "name": "sistema-gestion-efectivo-backend",
-  "private": true,
-  "engines": {
-    "node": ">=22.22.0 <23.0.0"
+    "test:flow": "tsx scripts/tests/full-flow-test.ts"
   }
 }
