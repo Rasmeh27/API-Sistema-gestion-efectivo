@@ -16,6 +16,8 @@ type SucursalRow = {
   codigo: string;
   nombre: string;
   estado: SucursalStatus;
+  latitud: string | null;
+  longitud: string | null;
 };
 
 // ── Constantes SQL ───────────────────────────────────────
@@ -25,7 +27,9 @@ const SUCURSAL_SELECT = `
     id::text as id,
     codigo,
     nombre,
-    estado
+    estado,
+    latitud,
+    longitud
   from sucursal
 `;
 
@@ -34,10 +38,10 @@ const SUCURSAL_SELECT = `
 export class PgSucursalRepository implements SucursalRepository {
   async create(dto: CreateSucursalDto): Promise<SucursalRecord> {
     const { rows } = await query<SucursalRow>(
-      `insert into sucursal (codigo, nombre, estado)
-       values ($1, $2, $3)
-       returning id::text as id, codigo, nombre, estado`,
-      [dto.codigo, dto.nombre, dto.estado ?? "ACTIVA"]
+      `insert into sucursal (codigo, nombre, estado, latitud, longitud)
+       values ($1, $2, $3, $4, $5)
+       returning id::text as id, codigo, nombre, estado, latitud, longitud`,
+      [dto.codigo, dto.nombre, dto.estado ?? "ACTIVA", dto.latitud ?? null, dto.longitud ?? null]
     );
 
     return this.toRecord(rows[0]);
@@ -92,6 +96,16 @@ export class PgSucursalRepository implements SucursalRepository {
       values.push(dto.estado);
     }
 
+    if (dto.latitud !== undefined) {
+      sets.push(`latitud = $${idx++}`);
+      values.push(dto.latitud);
+    }
+
+    if (dto.longitud !== undefined) {
+      sets.push(`longitud = $${idx++}`);
+      values.push(dto.longitud);
+    }
+
     if (sets.length === 0) return this.findById(id);
 
     values.push(id);
@@ -123,6 +137,9 @@ export class PgSucursalRepository implements SucursalRepository {
       codigo: row.codigo,
       nombre: row.nombre,
       estado: row.estado,
+      total: 0,
+      latitud: row.latitud !== null ? Number(row.latitud) : null,
+      longitud: row.longitud !== null ? Number(row.longitud) : null,
     };
   }
 }

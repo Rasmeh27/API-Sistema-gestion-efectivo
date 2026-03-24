@@ -121,6 +121,102 @@ export function parseDashboardQuery(query: unknown): DashboardQuery {
   };
 }
 
+// ── Trend (Time-Series) ─────────────────────────────────
+
+export type GroupBy = "day" | "week" | "month";
+
+export interface TrendQuery {
+  from: string;
+  to: string;
+  groupBy: GroupBy;
+  sucursalId?: string;
+}
+
+export interface TrendDataPoint {
+  fecha: string;
+  ingresos: number;
+  egresos: number;
+  balance: number;
+}
+
+export function parseTrendQuery(query: unknown): TrendQuery {
+  if (!query || typeof query !== "object") {
+    throw new Error('"from" y "to" son requeridos');
+  }
+
+  const q = query as Record<string, unknown>;
+
+  const from = typeof q.from === "string" && isValidISODate(q.from) ? q.from.trim() : undefined;
+  const to = typeof q.to === "string" && isValidISODate(q.to) ? q.to.trim() : undefined;
+
+  if (!from || !to) {
+    throw new Error('"from" y "to" son requeridos y deben ser fechas ISO válidas');
+  }
+
+  const validGroupBy: GroupBy[] = ["day", "week", "month"];
+  const rawGroupBy = typeof q.groupBy === "string" ? q.groupBy.trim().toLowerCase() : "day";
+  const groupBy = validGroupBy.includes(rawGroupBy as GroupBy) ? (rawGroupBy as GroupBy) : "day";
+
+  return {
+    from,
+    to,
+    groupBy,
+    sucursalId:
+      typeof q.sucursalId === "string" && q.sucursalId.trim().length > 0
+        ? q.sucursalId.trim()
+        : undefined,
+  };
+}
+
+// ── Average Balance ─────────────────────────────────────
+
+export interface AverageBalanceQuery {
+  sucursalId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface AverageBalanceByCaja {
+  cajaId: string;
+  cajaNombre: string;
+  promedio: number;
+}
+
+export interface AverageBalanceResponse {
+  promedioGeneral: number;
+  porCaja: AverageBalanceByCaja[];
+}
+
+export function parseAverageBalanceQuery(query: unknown): AverageBalanceQuery {
+  if (!query || typeof query !== "object") return {};
+
+  const q = query as Record<string, unknown>;
+
+  return {
+    sucursalId:
+      typeof q.sucursalId === "string" && q.sucursalId.trim().length > 0
+        ? q.sucursalId.trim()
+        : undefined,
+    from:
+      typeof q.from === "string" && isValidISODate(q.from) ? q.from.trim() : undefined,
+    to:
+      typeof q.to === "string" && isValidISODate(q.to) ? q.to.trim() : undefined,
+  };
+}
+
+// ── Geographic Distribution ─────────────────────────────
+
+export interface GeographicDistributionItem {
+  sucursalId: string;
+  nombre: string;
+  codigo: string;
+  latitud: number | null;
+  longitud: number | null;
+  efectivoTotal: number;
+  cajasAbiertas: number;
+  cajasCerradas: number;
+}
+
 export function parseListKpiSnapshotsQuery(query: unknown): ListKpiSnapshotsQuery {
   if (!query || typeof query !== "object") return {};
 

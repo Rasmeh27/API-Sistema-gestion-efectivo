@@ -15,6 +15,7 @@ import fundRequestRoutes from "../../modules/fund-requests/fund-requests.routes"
 import auditRoutes from "../../modules/audit/audit.routes";
 import kpiRoutes from "../../modules/kpis/kpis.routes";
 import atmRoutes from "../../modules/atm/atm.routes";
+import recommendationsRoutes from "../../modules/recommendations/recommendations.routes";
 
 const router = Router();
 
@@ -33,5 +34,6 @@ router.use("/solicitudes", requireAuth, fundRequestRoutes);
 router.use("/auditoria", requireAuth, auditRoutes);
 router.use("/kpis", requireAuth, kpiRoutes);
 router.use("/atm", requireAuth, atmRoutes);
+router.use("/recomendaciones", requireAuth, recommendationsRoutes);
 
 export default router;

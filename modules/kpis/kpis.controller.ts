@@ -5,6 +5,8 @@ import {
   parseCreateKpiSnapshot,
   parseListKpiSnapshotsQuery,
   parseDashboardQuery,
+  parseTrendQuery,
+  parseAverageBalanceQuery,
 } from "./kpis.dto";
 import { KpiError } from "./kpis.errors";
 import { KpisService } from "./kpis.service";
@@ -48,6 +50,38 @@ export class KpisController {
     try {
       const filters = parseDashboardQuery(req.query);
       const data = await this.service.dashboard(filters);
+
+      return res.status(200).json({ data });
+    } catch (error) {
+      return this.handleError(error, res, next);
+    }
+  };
+
+  trend = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const query = parseTrendQuery(req.query);
+      const data = await this.service.trend(query);
+
+      return res.status(200).json({ data });
+    } catch (error) {
+      return this.handleError(error, res, next);
+    }
+  };
+
+  averageBalance = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const query = parseAverageBalanceQuery(req.query);
+      const data = await this.service.averageBalance(query);
+
+      return res.status(200).json({ data });
+    } catch (error) {
+      return this.handleError(error, res, next);
+    }
+  };
+
+  geographicDistribution = async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const data = await this.service.geographicDistribution();
 
       return res.status(200).json({ data });
     } catch (error) {

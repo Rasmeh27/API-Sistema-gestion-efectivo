@@ -6,6 +6,11 @@ import {
   ListKpiSnapshotsQuery,
   DashboardQuery,
   DashboardResponse,
+  TrendQuery,
+  TrendDataPoint,
+  AverageBalanceQuery,
+  AverageBalanceResponse,
+  GeographicDistributionItem,
 } from "./kpis.dto";
 import { KpiError } from "./kpis.errors";
 import { KpiRepository } from "./kpis.repository";
@@ -53,6 +58,22 @@ export class KpisService {
       balanceAlerts,
       recentOperations,
     };
+  }
+
+  async trend(query: TrendQuery): Promise<TrendDataPoint[]> {
+    this.validateDateRange(query.from, query.to);
+    return this.repository.getTrend(query);
+  }
+
+  async averageBalance(query: AverageBalanceQuery): Promise<AverageBalanceResponse> {
+    if (query.from && query.to) {
+      this.validateDateRange(query.from, query.to);
+    }
+    return this.repository.getAverageBalance(query);
+  }
+
+  async geographicDistribution(): Promise<GeographicDistributionItem[]> {
+    return this.repository.getGeographicDistribution();
   }
 
   // ── Privados ──────────────────────────────────────────

@@ -30,6 +30,24 @@ router.get(
 );
 
 router.get(
+  "/trend",
+  requirePermission(Resources.KPI, Actions.VER),
+  controller.trend
+);
+
+router.get(
+  "/average-balance",
+  requirePermission(Resources.KPI, Actions.VER),
+  controller.averageBalance
+);
+
+router.get(
+  "/geographic-distribution",
+  requirePermission(Resources.KPI, Actions.VER),
+  controller.geographicDistribution
+);
+
+router.get(
   "/",
   requirePermission(Resources.KPI, Actions.VER),
   controller.list

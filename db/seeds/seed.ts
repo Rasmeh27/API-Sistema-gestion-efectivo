@@ -171,17 +171,19 @@ async function seed(): Promise<void> {
   // ── 5. Sucursales ─────────────────────────────────────────────────────────
   console.log("5. Sucursales...");
   const sucursalDefs = [
-    { codigo: "SCT", nombre: "Sucursal Centro" },
-    { codigo: "SNO", nombre: "Sucursal Norte"  },
-    { codigo: "SES", nombre: "Sucursal Este"   },
+    { codigo: "SCT", nombre: "Sucursal Centro", latitud: 18.4861, longitud: -69.9312 }, // Santo Domingo Centro
+    { codigo: "SNO", nombre: "Sucursal Norte",  latitud: 19.4517, longitud: -70.6970 }, // Santiago
+    { codigo: "SES", nombre: "Sucursal Este",   latitud: 18.4228, longitud: -68.9728 }, // Punta Cana / Higüey
   ];
   const sucIds: Record<string, number> = {};
   for (const s of sucursalDefs) {
     sucIds[s.codigo] = await upsertByField(
       "sucursal", "codigo", s.codigo,
-      `insert into sucursal (codigo, nombre, estado) values ($1, $2, 'ACTIVA') returning id`,
-      [s.codigo, s.nombre]
+      `insert into sucursal (codigo, nombre, estado, latitud, longitud) values ($1, $2, 'ACTIVA', $3, $4) returning id`,
+      [s.codigo, s.nombre, s.latitud, s.longitud]
     );
+    // Update coordinates for existing rows
+    await q(`update sucursal set latitud = $1, longitud = $2 where codigo = $3`, [s.latitud, s.longitud, s.codigo]);
   }
   log(sucursalDefs.map(s => `${s.codigo}(id=${sucIds[s.codigo]})`).join(", "));
 

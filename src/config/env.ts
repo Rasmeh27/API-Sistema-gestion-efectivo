@@ -94,4 +94,8 @@ export const env = {
 
   // Feature flags
   allowBootstrap: readBoolean("ALLOW_BOOTSTRAP", false),
+
+  // HuggingFace
+  hfToken: readOptional("HF_TOKEN", ""),
+  hfModel: readOptional("HF_MODEL", "Qwen/Qwen2.5-72B-Instruct"),
 } as const;
