@@ -7,6 +7,7 @@ import { AppError } from "../shared/errors/AppError";
 import { globalErrorHandler } from "../middlewares/error.middleware";
 import { env } from "../config/env";
 import appRoutes from "./routes";
+import cors from "cors";
 
 // ── App Factory ─────────────────────────────────────────
 
@@ -43,6 +44,7 @@ function configureMiddleware(app: express.Express): void {
   app.disable("x-powered-by");
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
+  app.use(cors({origin: "http://localhost:5173", credentials: true}))
 }
 
 function configureRoutes(app: express.Express): void {

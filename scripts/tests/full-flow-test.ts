@@ -94,8 +94,8 @@ async function main(): Promise<void> {
   if (!tesoreriaToken) throw new Error("Login tesorería falló");
 
   const loginAdmin = await api("POST", "/auth/login", {
-    email: "admin@banco.com",
-    password: "Test1234!",
+    email: "luisherasme4@gmail.com",
+    password: "1234",
   });
   const adminToken = (loginAdmin.data as any)?.data?.accessToken;
   if (!adminToken) throw new Error("Login admin falló");
