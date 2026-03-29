@@ -171,19 +171,20 @@ async function seed(): Promise<void> {
   // ── 5. Sucursales ─────────────────────────────────────────────────────────
   console.log("5. Sucursales...");
   const sucursalDefs = [
-    { codigo: "SCT", nombre: "Sucursal Centro", latitud: 18.4861, longitud: -69.9312 }, // Santo Domingo Centro
-    { codigo: "SNO", nombre: "Sucursal Norte",  latitud: 19.4517, longitud: -70.6970 }, // Santiago
-    { codigo: "SES", nombre: "Sucursal Este",   latitud: 18.4228, longitud: -68.9728 }, // Punta Cana / Higüey
+    { codigo: "SCT", nombre: "Sucursal Centro", latitud: 18.4861, longitud: -69.9312, telefono: "809-555-0100", direccion: "Av. Winston Churchill #45, Piantini, Santo Domingo", cantidad_atm: 1 },
+    { codigo: "SNO", nombre: "Sucursal Norte",  latitud: 19.4517, longitud: -70.6970, telefono: "809-555-0200", direccion: "Calle del Sol #120, Centro, Santiago", cantidad_atm: 1 },
+    { codigo: "SES", nombre: "Sucursal Este",   latitud: 18.4228, longitud: -68.9728, telefono: "809-555-0300", direccion: "Av. Barceló #78, Bávaro, Higüey", cantidad_atm: 1 },
   ];
   const sucIds: Record<string, number> = {};
   for (const s of sucursalDefs) {
     sucIds[s.codigo] = await upsertByField(
       "sucursal", "codigo", s.codigo,
-      `insert into sucursal (codigo, nombre, estado, latitud, longitud) values ($1, $2, 'ACTIVA', $3, $4) returning id`,
-      [s.codigo, s.nombre, s.latitud, s.longitud]
+      `insert into sucursal (codigo, nombre, estado, latitud, longitud, telefono, direccion, cantidad_atm) values ($1, $2, 'ACTIVA', $3, $4, $5, $6, $7) returning id`,
+      [s.codigo, s.nombre, s.latitud, s.longitud, s.telefono, s.direccion, s.cantidad_atm]
     );
-    // Update coordinates for existing rows
-    await q(`update sucursal set latitud = $1, longitud = $2 where codigo = $3`, [s.latitud, s.longitud, s.codigo]);
+    // Update fields for existing rows
+    await q(`update sucursal set latitud = $1, longitud = $2, telefono = $3, direccion = $4, cantidad_atm = $5 where codigo = $6`,
+      [s.latitud, s.longitud, s.telefono, s.direccion, s.cantidad_atm, s.codigo]);
   }
   log(sucursalDefs.map(s => `${s.codigo}(id=${sucIds[s.codigo]})`).join(", "));
 
@@ -260,6 +261,18 @@ async function seed(): Promise<void> {
   const cajeroId     = userIds["cajero@banco.com"];
   const cajero2Id    = userIds["cajero2@banco.com"];
   const supervisorId = userIds["supervisor@banco.com"];
+
+  await q(
+    `update caja
+        set responsable_id = case codigo
+          when 'SCT-DOP-01' then $1
+          when 'SNO-DOP-01' then $2
+          else responsable_id
+        end
+      where codigo in ('SCT-DOP-01', 'SNO-DOP-01')`,
+    [cajeroId, cajero2Id]
+  );
+  log('Responsables de caja de ejemplo asignados');
 
   const { rows: sesiones } = await q(`
     insert into sesioncaja

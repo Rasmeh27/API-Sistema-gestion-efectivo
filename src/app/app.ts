@@ -3,6 +3,7 @@
 import express from "express";
 import http from "http";
 import { closeDatabase, pingDatabase } from "../../db";
+import { runMigrations } from "../../db/migrate";
 import { AppError } from "../shared/errors/AppError";
 import { globalErrorHandler } from "../middlewares/error.middleware";
 import { env } from "../config/env";
@@ -23,7 +24,9 @@ export function createApp(): express.Express {
 
 // ── Server ──────────────────────────────────────────────
 
-export function startServer(): http.Server {
+export async function startServer(): Promise<http.Server> {
+  await runMigrations();
+
   const app = createApp();
   const server = http.createServer(app);
 

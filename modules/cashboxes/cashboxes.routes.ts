@@ -4,13 +4,15 @@ import { Router } from "express";
 import { CashboxesController } from "./cashboxes.controller";
 import { CashboxesService } from "./cashboxes.service";
 import { PgCashboxRepository } from "./cashboxes.postgres-repository";
+import { PgUserRepository } from "../users/user.postgres-repository";
 import { requirePermission } from "../../src/middlewares/rbac.middleware";
 import { Resources, Actions } from "../../src/config/rbac";
 
 // ── Dependencias ────────────────────────────────────────
 
 const repository = new PgCashboxRepository();
-const service = new CashboxesService(repository);
+const usersRepository = new PgUserRepository();
+const service = new CashboxesService(repository, usersRepository);
 const controller = new CashboxesController(service);
 
 // ── Rutas ───────────────────────────────────────────────

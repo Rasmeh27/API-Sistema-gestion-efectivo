@@ -5,6 +5,7 @@ import {
   SucursalRecord,
   UpdateSucursalDto,
 } from "./sucursales.dto";
+import { AtmRecord } from "../atm/atm.dto";
 
 export interface SucursalRepository {
   create(dto: CreateSucursalDto): Promise<SucursalRecord>;
@@ -13,4 +14,8 @@ export interface SucursalRepository {
   list(): Promise<SucursalRecord[]>;
   update(id: string, dto: UpdateSucursalDto): Promise<SucursalRecord | null>;
   delete(id: string): Promise<boolean>;
+  countByCodePrefix(prefix: string): Promise<number>;
+  listAtms(sucursalId: string): Promise<AtmRecord[]>;
+  hasOperationalRelations(id: string): Promise<boolean>;
+  syncStoredTotal(id: string): Promise<number>;
 }

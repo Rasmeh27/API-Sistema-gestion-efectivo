@@ -4,50 +4,34 @@ import { Router } from "express";
 import { AtmController } from "./atm.controller";
 import { AtmService } from "./atm.services";
 import { PgAtmRepository } from "./atm.postgres-repository";
-import { PgCashMovementRepository } from "../cash-movements/cash-movements.postgres-repository";
-import { CashMovementsService } from "../cash-movements/cash-movements.service";
-import { PgCashboxSessionRepository } from "../cashbox-sessions/cashbox-sessions.postgres-repository";
-import { PgCashboxRepository } from "../cashboxes/cashboxes.postgres-repository";
-import { SucursalesService } from "../sucursales/sucursales.service";
-import { PgSucursalRepository } from "../sucursales/sucursales.postgres-repository";
 import { AuditLogger } from "../audit/audit.logger";
 import { PgAuditRepository } from "../audit/audit.postgres-repository";
 import { requirePermission } from "../../src/middlewares/rbac.middleware";
 import { Resources, Actions } from "../../src/config/rbac";
 
-// ── Dependencias ────────────────────────────────────────
-
-// Repositorio de ATM
 const atmRepository = new PgAtmRepository();
-
-// Repositorios y servicio de movimientos
-const cashMovementRepository = new PgCashMovementRepository();
-const cashboxSessionRepository = new PgCashboxSessionRepository();
-const cashboxRepository = new PgCashboxRepository();
 const auditLogger = new AuditLogger(new PgAuditRepository());
-const cashMovementsService = new CashMovementsService(
-  cashMovementRepository,
-  cashboxSessionRepository,
-  cashboxRepository,
-  auditLogger
-);
-
-// Repositorio y servicio de sucursales
-const sucursalRepository = new PgSucursalRepository();
-const sucursalesService = new SucursalesService(sucursalRepository);
-
-// Servicio y controlador de ATM
-const atmService = new AtmService(atmRepository, cashMovementsService, sucursalesService);
+const atmService = new AtmService(atmRepository, auditLogger);
 const atmController = new AtmController(atmService);
 
-// ── Rutas ───────────────────────────────────────────────
-
 const router = Router();
+
+router.post(
+  "/",
+  requirePermission(Resources.SUCURSALES, Actions.EDITAR),
+  atmController.create
+);
 
 router.get(
   "/:id",
   requirePermission(Resources.MOVIMIENTOS, Actions.VER),
   atmController.getById
+);
+
+router.get(
+  "/:id/movimientos",
+  requirePermission(Resources.MOVIMIENTOS, Actions.VER),
+  atmController.getMovimientos
 );
 
 router.post(

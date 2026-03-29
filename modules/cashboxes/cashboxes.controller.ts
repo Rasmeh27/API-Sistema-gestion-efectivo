@@ -76,6 +76,28 @@ export class CashboxesController {
     }
 
     if (error instanceof Error) {
+      const pgCode = (error as unknown as Record<string, unknown>).code;
+      if (typeof pgCode === "string" && /^\d{5}$/.test(pgCode)) {
+        if (pgCode === "23503") {
+          return res.status(409).json({
+            error: { code: "INTEGRITY_CONFLICT", message: "No se puede completar la operación porque existen registros relacionados" },
+          });
+        }
+        if (pgCode === "23514") {
+          return res.status(400).json({
+            error: { code: "CHECK_VIOLATION", message: "Valor no permitido para uno de los campos enviados" },
+          });
+        }
+        if (pgCode === "23505") {
+          return res.status(409).json({
+            error: { code: "UNIQUE_CONFLICT", message: "Ya existe un registro con ese código" },
+          });
+        }
+        return res.status(500).json({
+          error: { code: "DATABASE_ERROR", message: "Error interno de base de datos" },
+        });
+      }
+
       return res.status(400).json({
         error: { code: "VALIDATION_ERROR", message: error.message },
       });

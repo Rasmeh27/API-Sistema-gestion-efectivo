@@ -2,4 +2,7 @@
 
 import { startServer } from "./app/app";
 
-startServer();
+startServer().catch((err) => {
+  console.error("[startup] fatal error:", err);
+  process.exit(1);
+});

@@ -27,6 +27,7 @@ type MovementRow = {
   usuario_id: string;
   caja_origen_id: string | null;
   caja_destino_id: string | null;
+  atm_id: string | null;
 };
 
 type SumRow = {
@@ -51,7 +52,8 @@ const MOVEMENT_SELECT = `
     sesion_caja_id::text as sesion_caja_id,
     usuario_id::text as usuario_id,
     caja_origen_id::text as caja_origen_id,
-    caja_destino_id::text as caja_destino_id
+    caja_destino_id::text as caja_destino_id,
+    atm_id::text as atm_id
   from movimientoefectivo
 `;
 
@@ -62,14 +64,15 @@ export class PgCashMovementRepository implements CashMovementRepository {
     const { rows } = await query<MovementRow>(
       `insert into movimientoefectivo
         (fecha, tipo, medio, monto, moneda, referencia, observacion, estado,
-         caja_id, sesion_caja_id, usuario_id, caja_origen_id, caja_destino_id)
-       values (now(), $1, $2, $3, $4, $5, $6, 'ACTIVO', $7, $8, $9, $10, $11)
+         caja_id, sesion_caja_id, usuario_id, caja_origen_id, caja_destino_id, atm_id)
+       values (now(), $1, $2, $3, $4, $5, $6, 'ACTIVO', $7, $8, $9, $10, $11, $12)
        returning
          id::text as id, fecha, tipo, medio, monto, moneda, referencia, observacion, estado,
          caja_id::text as caja_id, sesion_caja_id::text as sesion_caja_id,
          usuario_id::text as usuario_id,
          caja_origen_id::text as caja_origen_id,
-         caja_destino_id::text as caja_destino_id`,
+         caja_destino_id::text as caja_destino_id,
+         atm_id::text as atm_id`,
       [
         dto.tipo,
         dto.medio,
@@ -82,6 +85,7 @@ export class PgCashMovementRepository implements CashMovementRepository {
         usuarioId,
         dto.cajaOrigenId ?? null,
         dto.cajaDestinoId ?? null,
+        dto.atmId ?? null,
       ]
     );
 
@@ -137,8 +141,8 @@ export class PgCashMovementRepository implements CashMovementRepository {
   async sumBySession(sesionCajaId: string): Promise<{ ingresos: number; egresos: number }> {
     const { rows } = await query<SumRow>(
       `select
-        coalesce(sum(case when tipo = 'INGRESO' then monto else 0 end), 0) as ingresos,
-        coalesce(sum(case when tipo = 'EGRESO' then monto else 0 end), 0) as egresos
+        coalesce(sum(case when tipo in ('INGRESO', 'REABASTECIMIENTO') then monto else 0 end), 0) as ingresos,
+        coalesce(sum(case when tipo in ('EGRESO', 'TRANSFERENCIA') then monto else 0 end), 0) as egresos
        from movimientoefectivo
        where sesion_caja_id = $1 and estado = 'ACTIVO'`,
       [sesionCajaId]
@@ -179,6 +183,7 @@ export class PgCashMovementRepository implements CashMovementRepository {
       usuarioId: row.usuario_id,
       cajaOrigenId: row.caja_origen_id,
       cajaDestinoId: row.caja_destino_id,
+      atmId: row.atm_id,
     };
   }
 }

@@ -26,6 +26,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/src/index.js",
+    "migrate": "tsx db/migrate.ts",
     "seed": "tsx db/seeds/seed.ts",
     "test:flow": "tsx scripts/tests/full-flow-test.ts",
     "test:users": "tsx scripts/tests/users-tests.ts"

@@ -47,4 +47,10 @@ router.delete(
   controller.delete
 );
 
+router.get(
+  "/:id/atms",
+  requirePermission(Resources.SUCURSALES, Actions.VER),
+  controller.listAtms
+);
+
 export default router;

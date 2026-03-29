@@ -137,28 +137,79 @@ export class PgKpiRepository implements KpiRepository {
   // ── Dashboard: consultas en tiempo real ─────────────────
 
   async getCashSummary(sucursalId?: string): Promise<CashSummary> {
-    const sucursalFilter = sucursalId
-      ? `and c.sucursal_id = $1`
-      : "";
-
-    const params = sucursalId ? [sucursalId] : [];
+    const values: unknown[] = [];
+    const branchFilter = sucursalId ? `where s.id = $1` : "";
+    if (sucursalId) {
+      values.push(sucursalId);
+    }
 
     const { rows } = await query<CashSummaryRow>(
-      `select
-        coalesce(sum(
-          case when sc.estado = 'ABIERTA' then
-            sc.saldo_inicial
-            + coalesce((select sum(monto) from movimientoefectivo where sesion_caja_id = sc.id and tipo = 'INGRESO' and estado = 'ACTIVO'), 0)
-            - coalesce((select sum(monto) from movimientoefectivo where sesion_caja_id = sc.id and tipo = 'EGRESO' and estado = 'ACTIVO'), 0)
-          else 0 end
-        ), 0)::text as efectivo_total,
-        count(case when sc.estado = 'ABIERTA' then 1 end)::text as cajas_abiertas,
-        count(case when sc.estado = 'CERRADA' then 1 end)::text as cajas_cerradas
-      from sesioncaja sc
-      join caja c on c.id = sc.caja_id
-      where sc.fecha_apertura >= now() - interval '30 days'
-      ${sucursalFilter}`,
-      params
+      `with latest_sessions as (
+         select
+           c.id as caja_id,
+           c.sucursal_id,
+           sc.id as sesion_id,
+           sc.estado,
+           sc.saldo_inicial,
+           sc.saldo_final_real
+         from caja c
+         left join lateral (
+           select
+             sc.id,
+             sc.estado,
+             sc.saldo_inicial,
+             sc.saldo_final_real,
+             sc.fecha_apertura
+           from sesioncaja sc
+           where sc.caja_id = c.id
+           order by
+             case when sc.estado = 'ABIERTA' then 0 else 1 end,
+             sc.fecha_apertura desc,
+             sc.id desc
+           limit 1
+         ) sc on true
+       ),
+       caja_totales as (
+         select
+           ls.sucursal_id,
+           coalesce(sum(
+             case
+               when ls.sesion_id is null then 0::numeric
+               when ls.estado = 'ABIERTA' then
+                 ls.saldo_inicial
+                 + coalesce(mov.ingresos, 0)::numeric
+                 - coalesce(mov.egresos, 0)::numeric
+               else coalesce(ls.saldo_final_real, 0)::numeric
+             end
+           ), 0)::numeric as total_cajas,
+           count(case when ls.estado = 'ABIERTA' then 1 end)::int as cajas_abiertas,
+           count(case when ls.estado = 'CERRADA' then 1 end)::int as cajas_cerradas
+         from latest_sessions ls
+         left join lateral (
+           select
+             coalesce(sum(case when me.estado = 'ACTIVO' and me.tipo in ('INGRESO', 'REABASTECIMIENTO') then me.monto else 0 end), 0)::numeric as ingresos,
+             coalesce(sum(case when me.estado = 'ACTIVO' and me.tipo in ('EGRESO', 'TRANSFERENCIA') then me.monto else 0 end), 0)::numeric as egresos
+           from movimientoefectivo me
+           where me.sesion_caja_id = ls.sesion_id
+         ) mov on true
+         group by ls.sucursal_id
+       ),
+       atm_totales as (
+         select
+           a.sucursal_id,
+           coalesce(sum(a.saldo_actual), 0)::numeric as total_atm
+         from atm a
+         group by a.sucursal_id
+       )
+       select
+         coalesce(sum(coalesce(ct.total_cajas, 0) + coalesce(at.total_atm, 0)), 0)::text as efectivo_total,
+         coalesce(sum(coalesce(ct.cajas_abiertas, 0)), 0)::text as cajas_abiertas,
+         coalesce(sum(coalesce(ct.cajas_cerradas, 0)), 0)::text as cajas_cerradas
+       from sucursal s
+       left join caja_totales ct on ct.sucursal_id = s.id
+       left join atm_totales at on at.sucursal_id = s.id
+       ${branchFilter}`,
+      values
     );
 
     return {
@@ -382,30 +433,87 @@ export class PgKpiRepository implements KpiRepository {
       codigo: string;
       latitud: string | null;
       longitud: string | null;
+      telefono: string | null;
+      direccion: string | null;
+      cantidad_atm: string;
       efectivo_total: string;
       cajas_abiertas: string;
       cajas_cerradas: string;
     }>(
-      `select
-        s.id::text as sucursal_id,
-        s.nombre,
-        s.codigo,
-        s.latitud,
-        s.longitud,
-        coalesce(sum(
-          case when sc.estado = 'ABIERTA' then
-            sc.saldo_inicial
-            + coalesce((select sum(monto) from movimientoefectivo where sesion_caja_id = sc.id and tipo in ('INGRESO','REABASTECIMIENTO') and estado = 'ACTIVO'), 0)
-            - coalesce((select sum(monto) from movimientoefectivo where sesion_caja_id = sc.id and tipo in ('EGRESO','TRANSFERENCIA') and estado = 'ACTIVO'), 0)
-          else 0 end
-        ), 0)::text as efectivo_total,
-        count(distinct case when sc.estado = 'ABIERTA' then c.id end)::text as cajas_abiertas,
-        (count(distinct c.id) - count(distinct case when sc.estado = 'ABIERTA' then c.id end))::text as cajas_cerradas
-      from sucursal s
-      left join caja c on c.sucursal_id = s.id
-      left join sesioncaja sc on sc.caja_id = c.id and sc.estado = 'ABIERTA'
-      group by s.id, s.nombre, s.codigo, s.latitud, s.longitud
-      order by s.nombre asc`
+      `with latest_sessions as (
+         select
+           c.id as caja_id,
+           c.sucursal_id,
+           sc.id as sesion_id,
+           sc.estado,
+           sc.saldo_inicial,
+           sc.saldo_final_real
+         from caja c
+         left join lateral (
+           select
+             sc.id,
+             sc.estado,
+             sc.saldo_inicial,
+             sc.saldo_final_real,
+             sc.fecha_apertura
+           from sesioncaja sc
+           where sc.caja_id = c.id
+           order by
+             case when sc.estado = 'ABIERTA' then 0 else 1 end,
+             sc.fecha_apertura desc,
+             sc.id desc
+           limit 1
+         ) sc on true
+       ),
+       caja_totales as (
+         select
+           ls.sucursal_id,
+           coalesce(sum(
+             case
+               when ls.sesion_id is null then 0::numeric
+               when ls.estado = 'ABIERTA' then
+                 ls.saldo_inicial
+                 + coalesce(mov.ingresos, 0)::numeric
+                 - coalesce(mov.egresos, 0)::numeric
+               else coalesce(ls.saldo_final_real, 0)::numeric
+             end
+           ), 0)::numeric as total_cajas,
+           count(case when ls.estado = 'ABIERTA' then 1 end)::int as cajas_abiertas,
+           count(case when ls.estado = 'CERRADA' then 1 end)::int as cajas_cerradas
+         from latest_sessions ls
+         left join lateral (
+           select
+             coalesce(sum(case when me.estado = 'ACTIVO' and me.tipo in ('INGRESO', 'REABASTECIMIENTO') then me.monto else 0 end), 0)::numeric as ingresos,
+             coalesce(sum(case when me.estado = 'ACTIVO' and me.tipo in ('EGRESO', 'TRANSFERENCIA') then me.monto else 0 end), 0)::numeric as egresos
+           from movimientoefectivo me
+           where me.sesion_caja_id = ls.sesion_id
+         ) mov on true
+         group by ls.sucursal_id
+       ),
+       atm_totales as (
+         select
+           a.sucursal_id,
+           count(*)::int as cantidad_atm,
+           coalesce(sum(a.saldo_actual), 0)::numeric as total_atm
+         from atm a
+         group by a.sucursal_id
+       )
+       select
+         s.id::text as sucursal_id,
+         s.nombre,
+         s.codigo,
+         s.latitud,
+         s.longitud,
+         s.telefono,
+         s.direccion,
+         coalesce(at.cantidad_atm, 0)::text as cantidad_atm,
+         round(coalesce(ct.total_cajas, 0)::numeric + coalesce(at.total_atm, 0)::numeric, 2)::text as efectivo_total,
+         coalesce(ct.cajas_abiertas, 0)::text as cajas_abiertas,
+         coalesce(ct.cajas_cerradas, 0)::text as cajas_cerradas
+       from sucursal s
+       left join caja_totales ct on ct.sucursal_id = s.id
+       left join atm_totales at on at.sucursal_id = s.id
+       order by s.nombre asc`
     );
 
     return rows.map((row) => ({
@@ -414,6 +522,9 @@ export class PgKpiRepository implements KpiRepository {
       codigo: row.codigo,
       latitud: row.latitud !== null ? Number(row.latitud) : null,
       longitud: row.longitud !== null ? Number(row.longitud) : null,
+      telefono: row.telefono,
+      direccion: row.direccion,
+      cantidadAtm: Number(row.cantidad_atm),
       efectivoTotal: Number(row.efectivo_total),
       cajasAbiertas: Number(row.cajas_abiertas),
       cajasCerradas: Number(row.cajas_cerradas),

@@ -212,6 +212,9 @@ export interface GeographicDistributionItem {
   codigo: string;
   latitud: number | null;
   longitud: number | null;
+  telefono: string | null;
+  direccion: string | null;
+  cantidadAtm: number;
   efectivoTotal: number;
   cajasAbiertas: number;
   cajasCerradas: number;

@@ -23,6 +23,7 @@ export interface CashMovementRecord {
   usuarioId: string;
   cajaOrigenId: string | null;
   cajaDestinoId: string | null;
+  atmId: string | null;
 }
 
 export interface CreateMovementDto {
@@ -36,6 +37,7 @@ export interface CreateMovementDto {
   sesionCajaId: string;
   cajaOrigenId?: string;
   cajaDestinoId?: string;
+  atmId?: string;
 }
 
 export type Currency = "DOP" | "USD" | "EUR";
@@ -119,6 +121,7 @@ export function parseCreateMovement(body: unknown): CreateMovementDto {
     sesionCajaId: requireNonEmptyString(b.sesionCajaId, "sesionCajaId"),
     cajaOrigenId: optionalString(b.cajaOrigenId),
     cajaDestinoId: optionalString(b.cajaDestinoId),
+    atmId: optionalString(b.atmId),
   };
 
   if (dto.tipo === "TRANSFERENCIA") validateTransferFields(dto);

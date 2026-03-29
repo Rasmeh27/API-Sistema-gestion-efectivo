@@ -6,7 +6,10 @@ type CashboxErrorCode =
   | "CASHBOX_IN_USE"
   | "CASHBOX_CREATE_FAILED"
   | "INVALID_CASHBOX_STATUS"
-  | "CASHBOX_BLOCKED";
+  | "CASHBOX_BLOCKED"
+  | "CASHBOX_RESPONSIBLE_NOT_FOUND"
+  | "CASHBOX_RESPONSIBLE_INACTIVE"
+  | "CASHBOX_RESPONSIBLE_BRANCH_MISMATCH";
 
 const HTTP_STATUS = {
   BAD_REQUEST: 400,
@@ -42,8 +45,8 @@ export const CashboxErrors = {
   inUse: () =>
     new CashboxError(
       "CASHBOX_IN_USE",
-      HTTP_STATUS.BAD_REQUEST,
-      "No se puede eliminar la caja porque tiene sesiones activas"
+      HTTP_STATUS.CONFLICT,
+      "No se puede eliminar la caja porque tiene sesiones, ATMs o movimientos asociados"
     ),
 
   createFailed: () =>
@@ -65,5 +68,26 @@ export const CashboxErrors = {
       "CASHBOX_BLOCKED",
       HTTP_STATUS.BAD_REQUEST,
       `La caja ${id} está bloqueada y no puede operar`
+    ),
+
+  responsibleNotFound: (userId: string) =>
+    new CashboxError(
+      "CASHBOX_RESPONSIBLE_NOT_FOUND",
+      HTTP_STATUS.BAD_REQUEST,
+      `El responsable indicado no existe: ${userId}`
+    ),
+
+  responsibleInactive: (userId: string) =>
+    new CashboxError(
+      "CASHBOX_RESPONSIBLE_INACTIVE",
+      HTTP_STATUS.BAD_REQUEST,
+      `El responsable ${userId} debe estar ACTIVO`
+    ),
+
+  responsibleBranchMismatch: () =>
+    new CashboxError(
+      "CASHBOX_RESPONSIBLE_BRANCH_MISMATCH",
+      HTTP_STATUS.BAD_REQUEST,
+      "El responsable debe pertenecer a la misma sucursal de la caja"
     ),
 };

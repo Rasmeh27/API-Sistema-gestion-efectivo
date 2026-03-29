@@ -41,8 +41,8 @@ export const SucursalErrors = {
   inUse: () =>
     new SucursalError(
       "SUCURSAL_IN_USE",
-      HTTP_STATUS.BAD_REQUEST,
-      "No se puede eliminar la sucursal porque tiene cajas o usuarios asignados"
+      HTTP_STATUS.CONFLICT,
+      "No se puede eliminar la sucursal porque tiene cajas, ATMs o usuarios asignados"
     ),
 
   createFailed: () =>

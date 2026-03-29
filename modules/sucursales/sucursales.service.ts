@@ -4,17 +4,27 @@ import {
   CreateSucursalDto,
   SucursalRecord,
   UpdateSucursalDto,
+  generateCodePrefix,
 } from "./sucursales.dto";
+import { AtmRecord } from "../atm/atm.dto";
 import { SucursalErrors } from "./sucursales.errors";
 import { SucursalRepository } from "./sucursales.repository";
-import { query } from "../../db";
 
 export class SucursalesService {
   constructor(private readonly sucursales: SucursalRepository) {}
 
   async create(dto: CreateSucursalDto): Promise<SucursalRecord> {
-    await this.ensureCodeAvailable(dto.codigo);
-    return this.sucursales.create(dto);
+    this.ensureCoordinateConsistency(dto.latitud ?? null, dto.longitud ?? null);
+
+    if (dto.codigo) {
+      await this.ensureCodeAvailable(dto.codigo);
+    } else {
+      dto.codigo = await this.generateUniqueCode(dto.nombre);
+    }
+
+    const created = await this.sucursales.create(dto);
+    await this.sucursales.syncStoredTotal(created.id);
+    return this.getById(created.id);
   }
 
   async list(): Promise<SucursalRecord[]> {
@@ -30,64 +40,80 @@ export class SucursalesService {
   }
 
   async update(id: string, dto: UpdateSucursalDto): Promise<SucursalRecord> {
+    const current = await this.sucursales.findById(id);
+    if (!current) {
+      throw SucursalErrors.notFound(id);
+    }
+
     if (dto.codigo) {
       await this.ensureCodeAvailableForUpdate(dto.codigo, id);
     }
+
+    this.ensureCoordinateConsistency(
+      dto.latitud !== undefined ? dto.latitud : current.latitud,
+      dto.longitud !== undefined ? dto.longitud : current.longitud
+    );
+
     const updated = await this.sucursales.update(id, dto);
     if (!updated) {
       throw SucursalErrors.notFound(id);
     }
-    return updated;
+
+    await this.sucursales.syncStoredTotal(id);
+    return this.getById(id);
   }
 
   async delete(id: string): Promise<void> {
+    const existing = await this.sucursales.findById(id);
+    if (!existing) {
+      throw SucursalErrors.notFound(id);
+    }
+
+    const isInUse = await this.sucursales.hasOperationalRelations(id);
+    if (isInUse) {
+      throw SucursalErrors.inUse();
+    }
+
     const deleted = await this.sucursales.delete(id);
     if (!deleted) {
       throw SucursalErrors.notFound(id);
     }
   }
 
-  /**
-   * Calcula y guarda el total de la sucursal:
-   * saldo de caja principal (movimientos) + suma de ATMs asociados
-   */
-  async getTotalSucursal(id: string): Promise<SucursalRecord> {
-    const sucursal = await this.sucursales.findById(id);
-    if (!sucursal) throw SucursalErrors.notFound(id);
+  async listAtms(sucursalId: string): Promise<AtmRecord[]> {
+    const sucursal = await this.sucursales.findById(sucursalId);
+    if (!sucursal) {
+      throw SucursalErrors.notFound(sucursalId);
+    }
 
-    // Total de movimientos de caja principal
-    const { rows: movRows } = await query<{ ingresos: number; egresos: number }>(
-      `select
-         coalesce(sum(case when tipo = 'INGRESO' then monto else 0 end), 0) as ingresos,
-         coalesce(sum(case when tipo = 'EGRESO' then monto else 0 end), 0) as egresos
-       from movimientoefectivo
-       where caja_id = $1 and estado = 'ACTIVO'`,
-      [id]
-    );
-    const saldoCaja = (movRows[0]?.ingresos ?? 0) - (movRows[0]?.egresos ?? 0);
-
-    // Total de ATMs asociados
-    const { rows: atmRows } = await query<{ total: number }>(
-      `select coalesce(sum(limite_operativo), 0) as total
-       from atm
-       where sucursal_id = $1`,
-      [id]
-    );
-    const saldoAtms = atmRows[0]?.total ?? 0;
-
-    const total = saldoCaja + saldoAtms;
-
-    // Guardar el total en la tabla sucursal
-    await query(
-      `update sucursal set total = $1 where id = $2`,
-      [total, id]
-    );
-
-    // Devolver el registro actualizado con el total
-    return { ...sucursal, total };
+    return this.sucursales.listAtms(sucursalId);
   }
 
-  // ── Privados ──────────────────────────────────────────
+  async getTotalSucursal(id: string): Promise<SucursalRecord> {
+    const sucursal = await this.sucursales.findById(id);
+    if (!sucursal) {
+      throw SucursalErrors.notFound(id);
+    }
+
+    await this.sucursales.syncStoredTotal(id);
+    return this.getById(id);
+  }
+
+  private async generateUniqueCode(nombre: string): Promise<string> {
+    const prefix = generateCodePrefix(nombre);
+    const maxAttempts = 10;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const count = await this.sucursales.countByCodePrefix(prefix);
+      const next = count + 1 + attempt;
+      const candidate = `${prefix}-${String(next).padStart(3, "0")}`;
+      const existing = await this.sucursales.findByCode(candidate);
+      if (!existing) return candidate;
+    }
+
+    const fallback = `${prefix}-${Date.now()}`;
+    return fallback;
+  }
 
   private async ensureCodeAvailable(codigo: string): Promise<void> {
     const existing = await this.sucursales.findByCode(codigo);
@@ -103,6 +129,20 @@ export class SucursalesService {
     const existing = await this.sucursales.findByCode(codigo);
     if (existing && existing.id !== sucursalId) {
       throw SucursalErrors.codeConflict(codigo);
+    }
+  }
+
+  private ensureCoordinateConsistency(
+    latitud: number | null,
+    longitud: number | null
+  ): void {
+    const hasLatitud = latitud !== null;
+    const hasLongitud = longitud !== null;
+
+    if (hasLatitud !== hasLongitud) {
+      throw new Error(
+        "latitud y longitud deben enviarse juntas para que el frontend pueda ubicar la sucursal en el mapa"
+      );
     }
   }
 }

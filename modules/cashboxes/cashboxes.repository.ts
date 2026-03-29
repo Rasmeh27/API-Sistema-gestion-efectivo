@@ -13,4 +13,7 @@ export interface CashboxRepository {
   list(): Promise<CashboxRecord[]>;
   update(id: string, dto: UpdateCashboxDto): Promise<CashboxRecord | null>;
   delete(id: string): Promise<boolean>;
+  hasOperationalRelations(id: string): Promise<boolean>;
+  countByCodePrefix(prefix: string): Promise<number>;
+  getSucursalCodigo(sucursalId: string): Promise<string | null>;
 }

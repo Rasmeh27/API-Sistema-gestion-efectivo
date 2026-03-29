@@ -10,15 +10,19 @@ export type CashboxRecord = {
   estado: CashboxStatus;
   moneda: string;
   limiteOperativo: number;
+  responsableId: string | null;
+  responsableNombre: string | null;
+  responsableEmail: string | null;
 };
 
 export type CreateCashboxDto = {
   sucursalId: string;
-  codigo: string;
+  codigo?: string;
   nombre: string;
   estado?: CashboxStatus;
   moneda?: string;
   limiteOperativo?: number;
+  responsableId?: string | null;
 };
 
 export type UpdateCashboxDto = {
@@ -28,6 +32,7 @@ export type UpdateCashboxDto = {
   estado?: CashboxStatus;
   moneda?: string;
   limiteOperativo?: number;
+  responsableId?: string | null;
 };
 
 // ── Parsers ──────────────────────────────────────────────
@@ -54,8 +59,37 @@ function optionalNonEmptyString(
   value: unknown,
   field: string
 ): string | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") {
+    throw new Error(`${field} debe ser un string`);
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed;
+}
+
+function requireOptionalNonEmptyString(
+  value: unknown,
+  field: string
+): string | undefined {
   if (value === undefined) return undefined;
   return requireNonEmptyString(value, field);
+}
+
+function optionalStringOrNull(
+  value: unknown,
+  field: string
+): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+
+  if (typeof value !== "string") {
+    throw new Error(`${field} debe ser un string o null`);
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed;
 }
 
 const VALID_STATUSES: CashboxStatus[] = ["ACTIVA", "INACTIVA", "EN_MANTENIMIENTO"];
@@ -86,7 +120,7 @@ export function parseCreateCashbox(input: unknown): CreateCashboxDto {
 
   return {
     sucursalId: requireNonEmptyString(body.sucursalId, "sucursalId"),
-    codigo: requireNonEmptyString(body.codigo, "codigo").toUpperCase(),
+    codigo: optionalNonEmptyString(body.codigo, "codigo")?.toUpperCase(),
     nombre: requireNonEmptyString(body.nombre, "nombre"),
     estado: body.estado !== undefined
       ? parseStatus(body.estado, "estado")
@@ -96,6 +130,7 @@ export function parseCreateCashbox(input: unknown): CreateCashboxDto {
       body.limiteOperativo,
       "limiteOperativo"
     ),
+    responsableId: optionalStringOrNull(body.responsableId, "responsableId"),
   };
 }
 
@@ -103,13 +138,13 @@ export function parseUpdateCashbox(input: unknown): UpdateCashboxDto {
   const body = requireObject(input);
   const result: UpdateCashboxDto = {};
 
-  const sucursalId = optionalNonEmptyString(body.sucursalId, "sucursalId");
+  const sucursalId = requireOptionalNonEmptyString(body.sucursalId, "sucursalId");
   if (sucursalId !== undefined) result.sucursalId = sucursalId;
 
-  const codigo = optionalNonEmptyString(body.codigo, "codigo");
+  const codigo = requireOptionalNonEmptyString(body.codigo, "codigo");
   if (codigo !== undefined) result.codigo = codigo.toUpperCase();
 
-  const nombre = optionalNonEmptyString(body.nombre, "nombre");
+  const nombre = requireOptionalNonEmptyString(body.nombre, "nombre");
   if (nombre !== undefined) result.nombre = nombre;
 
   if ("estado" in body && body.estado !== undefined) {
@@ -124,6 +159,10 @@ export function parseUpdateCashbox(input: unknown): UpdateCashboxDto {
     "limiteOperativo"
   );
   if (limiteOperativo !== undefined) result.limiteOperativo = limiteOperativo;
+
+  if ("responsableId" in body) {
+    result.responsableId = optionalStringOrNull(body.responsableId, "responsableId");
+  }
 
   if (Object.keys(result).length === 0) {
     throw new Error("Debes enviar al menos un campo para actualizar");
